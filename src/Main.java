@@ -22,12 +22,14 @@ public class Main {
         /* Perform Semantic Check on all files provided */
         for(int i = 0; i < args.length; i++){
             FileInputStream input_file = null;
+            BufferedWriter  output_file = null;
+
             try{
                 
                 print_label(args[i]);
 
                 input_file = new FileInputStream(args[i]);
-
+                
                 /* Parse file */
                 MiniJavaParser parser = new MiniJavaParser(input_file);
                 Goal root = parser.Goal();
@@ -52,11 +54,14 @@ public class Main {
                 
                 /* Print offsets */
                 // symbol_table.print_offsets();
-
+                
                 /* Perform Lowering */
                 LoweringST lst = new LoweringST();
                 lst.fill_ST(symbol_table);
-                lst.print_all();
+                
+                output_file = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(get_output_filename(args[i])), "utf-8"));
+                LoweringVisitor lower_v = new LoweringVisitor(lst, output_file);
+                root.accept(lower_v, null);
             }
             catch(ParseException ex){
                 System.out.println("\n\t** " + ex.getMessage());
@@ -71,6 +76,8 @@ public class Main {
                 try{
                     if(input_file != null) 
                         input_file.close();
+                    if(output_file != null)
+                        output_file.close();
                     }
                     catch(IOException ex){
                     System.err.println("\n\t** " + ex.getMessage());
@@ -101,4 +108,14 @@ public class Main {
         System.out.println("\n");
     }
 
+    /* Given a .java file, checks if valid and returns its equevalent .ll file_name */
+    public static String get_output_filename(String file_name) throws Exception{
+        int file_name_len = file_name.length();
+        if(file_name_len < 6 || !(file_name.substring(file_name_len - 5).equals(".java")))
+            throw new Exception("Invalid file name extension: " + file_name);
+
+        return file_name.substring(0, file_name_len - 5) + ".ll";
+    }
 }
+
+

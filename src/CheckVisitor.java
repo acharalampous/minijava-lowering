@@ -2,7 +2,7 @@
 /* CheckVisitor.java */
 
 /* Name:    Andreas Charalampous
- * String.M :    1115201500195
+ * A.M :    1115201500195
  * e-mail:  sdi1500195@di.uoa.gr
  */
 /********************************/

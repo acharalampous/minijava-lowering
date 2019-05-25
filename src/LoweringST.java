@@ -6,6 +6,8 @@
  * e-mail:  sdi1500195@di.uoa.gr
  */
 /********************************/
+
+import java.io.BufferedWriter;
 import java.util.*;
 
 
@@ -44,6 +46,75 @@ public class LoweringST{
 
             this.classes.put(class_name, co);
         }
+    }
+
+    /* Prints the global vtables at the start of the given output_file */
+    public void print_vtables(BufferedWriter output_file) throws Exception{
+        /* For every class print its vtable */
+        for (Map.Entry<String, ClassOffsets> entry : this.classes.entrySet()){
+            String class_name = entry.getKey();
+            ClassOffsets co = entry.getValue();
+
+            int vt_size = co.get_vt_size();
+
+            output_file.write("@." + class_name + "_vtable = global [" + vt_size + " x i8*] [");
+
+            int count = 0;
+            /* Declare each method and it's types in vtable */
+            for (Map.Entry<String, MethodInfo> m_entry : entry.getValue().get_methods().entrySet()){
+                count++;
+                
+                String m_name = m_entry.getKey();
+                MethodInfo m_info = m_entry.getValue();
+
+                String m_class_name = m_info.get_class_name();
+                output_file.write("i8* bitcast (");
+
+                /* Print return type */
+                Vector<NameType> types = m_info.get_types();
+                String ret_type = types.elementAt(0).get_type();
+                String ret_type_llvm = get_llvm_type(ret_type);
+
+                output_file.write(ret_type_llvm + " (i8*");
+
+                /* Print every argument type */
+                for(int i = 1; i < types.size(); i++){
+                    output_file.write("," + get_llvm_type(types.elementAt(i).get_type()));
+                }
+                output_file.write(")* @" + m_class_name + "." + m_name + " to i8*)");
+
+                /* If not the last method in vtable, place comma for next method */
+                if(count != vt_size)
+                    output_file.write(", ");
+            } // end methods print
+            output_file.write("]\n");
+        } // end class' vtable print
+    }
+    
+    public String get_llvm_type(String java_type){
+        if(java_type.equals("boolean")) return "i1";
+        else if(java_type.equals("int")) return "i32";
+        else if(java_type.equals("int[]")) return "i32*";
+        else return "i8*";
+    }
+
+    public void print_ext_methods(BufferedWriter output_file) throws Exception{
+        output_file.write(  
+            "\n\ndeclare i8* @calloc(i32, i32)\ndeclare i32 @printf(i8*, ...)\ndeclare void @exit(i32)" +
+            "\n\n@_cint = constant [4 x i8] c\"%d\\0a\\00\"" +
+            "\n@_cOOB = constant [15 x i8] c\"Out of bounds\\0a\\00\"" +
+            "\ndefine void @print_int(i32 %i) {" +
+            "\n\t%_str = bitcast [4 x i8]* @_cint to i8*" +
+            "\n\tcall i32 (i8*, ...) @printf(i8* %_str, i32 %i)" +
+            "\n\tret void " +
+            "\n} " +
+            "\n\ndefine void @throw_oob() { " +
+            "\n\t%_str = bitcast [15 x i8]* @_cOOB to i8* " +
+            "\n\tcall i32 (i8*, ...) @printf(i8* %_str) " +
+            "\n\tcall void @exit(i32 1) " +
+            "\n\tret void" +
+            "\n}"
+        );
     }
 
     public void print_all(){
