@@ -51,7 +51,12 @@ public class Main {
                 System.out.println("  -> Program Symanticly Checked.");
                 
                 /* Print offsets */
-                symbol_table.print_offsets();
+                // symbol_table.print_offsets();
+
+                /* Perform Lowering */
+                LoweringST lst = new LoweringST();
+                lst.fill_ST(symbol_table);
+                lst.print_all();
             }
             catch(ParseException ex){
                 System.out.println("\n\t** " + ex.getMessage());
