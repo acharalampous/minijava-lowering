@@ -31,26 +31,35 @@ public class LoweringVisitor extends GJDepthFirst<String, String>{
       this.output_file.write(output);
    }
 
-   public String load_variable(String var) throws IOException{
+   /* Prepares a register for the var given. Var can be a local variable, class field or literal */
+   public String load_variable(String var, String type) throws IOException{
       String reg;
       if(var.substring(0, 1).equals("%")){ // local register
          reg = symbol_table.get_register();
-         emit("\n\t" + reg + " = load i32, i32* " + var);
+         if(type.equals("int")) 
+            emit("\n\t" + reg + " = load i32, i32* " + var);
+         else if(type.equals("boolean")) 
+            emit("\n\t" + reg + " = load i8, i8* " + var);
+         else if(type.equals("int[]")) 
+            emit("\n\t" + reg + " = load i32*, i32** " + var);
+         else 
+            emit("\n\t" + reg + " = load i8*, i8** " + var);
+
       }
       else if(var.length() > 1 && var.substring(0, 2).equals("!!")){ // field of object, must fetch it from memory
-         String var_name = var.substring(2); // get variable name
+         /* Get variable name and its offset to fetch it from memory */
+         String var_name = var.substring(2); 
          int var_offset = symbol_table.get_var_offset(cur_class, var_name);
-         
+
+         /* Get ptr to variable and store it to register */
          String tmp_reg1 = symbol_table.get_register();
          emit("\n\t" + tmp_reg1 + " = getelementpr i8, i8* %this, i32 " + var_offset);
-
          String tmp_reg2 = symbol_table.get_register();
          emit("\n\t" + tmp_reg2 + " = bitcast i8* " + tmp_reg1 + " to i32*");
-
          reg = symbol_table.get_register();
          emit("\n\t" + reg + " = load i32, i32* " + tmp_reg2);
       }
-      else
+      else // literal provided   
          reg = var;
 
       return reg;
@@ -67,8 +76,7 @@ public class LoweringVisitor extends GJDepthFirst<String, String>{
       symbol_table.print_ext_methods(output_file);
       String _ret = null;
       n.f0.accept(this, argu);
-      n.f1.accept(this, argu);
-      n.f2.accept(this, argu);
+      //n.f1.accept(this, argu);
       return _ret;
    }
   
@@ -428,10 +436,10 @@ public class LoweringVisitor extends GJDepthFirst<String, String>{
     */
    public String visit(CompareExpression n, String argu) throws Exception {
       String n1 = n.f0.accept(this, "##");
-      String reg_n1 = load_variable(n1);
+      String reg_n1 = load_variable(n1, "int");
       
       String n2 = n.f2.accept(this, "##");
-      String reg_n2 = load_variable(n2);
+      String reg_n2 = load_variable(n2, "int");
       
       String reg_n3 = symbol_table.get_register();
       emit("\n\t" + reg_n3 + " = icmp slt i32 " + reg_n1 + ", " + reg_n2);
@@ -446,10 +454,10 @@ public class LoweringVisitor extends GJDepthFirst<String, String>{
     */
    public String visit(PlusExpression n, String argu) throws Exception {
       String n1 = n.f0.accept(this, "##");
-      String reg_n1 = load_variable(n1);
+      String reg_n1 = load_variable(n1, "int");
       
       String n2 = n.f2.accept(this, "##");
-      String reg_n2 = load_variable(n2);
+      String reg_n2 = load_variable(n2, "int");
       
       String reg_n3 = symbol_table.get_register();
       emit("\n\t" + reg_n3 + " = add i32 " + reg_n1 + ", " + reg_n2);
@@ -464,10 +472,10 @@ public class LoweringVisitor extends GJDepthFirst<String, String>{
     */
    public String visit(MinusExpression n, String argu) throws Exception {
       String n1 = n.f0.accept(this, "##");
-      String reg_n1 = load_variable(n1);
+      String reg_n1 = load_variable(n1, "int");
       
       String n2 = n.f2.accept(this, "##");
-      String reg_n2 = load_variable(n2);
+      String reg_n2 = load_variable(n2, "int");
       
       String reg_n3 = symbol_table.get_register();
       emit("\n\t" + reg_n3 + " = sub i32 " + reg_n1 + ", " + reg_n2);
@@ -482,10 +490,10 @@ public class LoweringVisitor extends GJDepthFirst<String, String>{
     */
    public String visit(TimesExpression n, String argu) throws Exception {
       String n1 = n.f0.accept(this, "##");
-      String reg_n1 = load_variable(n1);
+      String reg_n1 = load_variable(n1, "int");
       
       String n2 = n.f2.accept(this, "##");
-      String reg_n2 = load_variable(n2);
+      String reg_n2 = load_variable(n2, "int");
       
       String reg_n3 = symbol_table.get_register();
       emit("\n\t" + reg_n3 + " = mul i32 " + reg_n1 + ", " + reg_n2);
@@ -500,24 +508,77 @@ public class LoweringVisitor extends GJDepthFirst<String, String>{
     * f3 -> "]" 
     */
    public String visit(ArrayLookup n, String argu) throws Exception {
-      
+      /* Get array variable register */
+      String reg_n1 = n.f0.accept(this, "##");
+      reg_n1 = load_variable(reg_n1, "int[]"); 
 
-      return null;
+      /* Get index register */
+      String index = n.f2.accept(this, "##");
+      index = load_variable(index, "int");
+      
+      /* Get array length from first cell */
+      String reg_n2 = symbol_table.get_register();
+      emit("\n\t" + reg_n2 + " = getelementptr i32, i32* " + reg_n1 + ", i32 0");
+
+      /* Load size to register */
+      String reg_n3 = symbol_table.get_register();
+      emit("\n\t" + reg_n3 + " = load i32, i32* " + reg_n2);
+
+      /* Perform out of bounds check */
+      String reg_n4 = symbol_table.get_register();
+      emit("\n\t" + reg_n4 + " = icmp ult i32 " + index + ", " + reg_n3);
+
+      /* Transform ult to "umt" */
+      String reg_n5 = symbol_table.get_register();
+      emit("\n\t" + reg_n5 + " = xor i1 " + reg_n4 + ", 1");
+
+      /* Branch if-then-else */
+      String then_lbl = symbol_table.get_oob_label();
+      String else_lbl = symbol_table.get_oob_label();
+      emit("\n\tbr i1 " + reg_n5 + ", label %" + then_lbl + ", label %" + else_lbl);
+      emit("\n\n");
+      
+      /* Then */
+      emit(then_lbl + ":");
+      emit("\n\tcall void @throw_oob()");
+      emit("\n\tbr label %" + else_lbl);
+      emit("\n\n");
+      
+      
+      /* Else */
+      emit(else_lbl + ":");
+      
+      /* Add + 1 to size, to bypass length cell */
+      String reg_n6 = symbol_table.get_register();
+      emit("\n\t" + reg_n6 + " = add i32 " + index + ", 1");
+      
+      /* Get cell to register */
+      String reg_n7 = symbol_table.get_register();
+      emit("\n\t" + reg_n7 + " = getelementptr i32, i32*  " + reg_n1 + ", i32 " + reg_n6);
+      
+      return reg_n7;
    }
   
-     /**
-      * f0 -> PrimaryExpression()
-      * f1 -> "."
-      * f2 -> "length"
-      */
-     public String visit(ArrayLength n, String argu) throws Exception {
-        String _ret=null;
-        n.f0.accept(this, argu);
-        n.f1.accept(this, argu);
-        n.f2.accept(this, argu);
-        return _ret;
-     }
-  
+   /**
+    * f0 -> PrimaryExpression()
+    * f1 -> "."
+    * f2 -> "length"
+    */
+   public String visit(ArrayLength n, String argu) throws Exception {
+      /* Get array variable register */
+      String n1 = n.f0.accept(this, "##");
+      String reg_n1 = load_variable(n1, "int[]");
+
+      /* Get array length from first cell */
+      String reg_n2 = symbol_table.get_register();
+      emit("\n\t" + reg_n2 + " = getelementptr i32, i32* " + reg_n1 + ", i32 0");
+      
+      String reg_n3 = symbol_table.get_register();
+      emit("\n\t" + reg_n3 + " = load i32, i32* " + reg_n2);
+
+      return reg_n3;
+   }
+
      /**
       * f0 -> PrimaryExpression()
       * f1 -> "."
@@ -615,11 +676,12 @@ public class LoweringVisitor extends GJDepthFirst<String, String>{
    public String visit(Identifier n, String argu) throws Exception {
       if(argu != null && argu.equals("##")){ // if var was given, get it's register
          String ret = symbol_table.get_var_reg(n.f0.tokenImage);
-         if(ret != null)
+         if(ret != null) // register found
             return ret;
-         else
+         else // not found, return identifier with a sign in order to be used differently
             return "!!" + n.f0.tokenImage;
       }
+
       return n.f0.tokenImage;
    }
 
@@ -638,36 +700,48 @@ public class LoweringVisitor extends GJDepthFirst<String, String>{
     * f4 -> "]"
     */
    public String visit(ArrayAllocationExpression n, String argu) throws Exception {
+      /* Get Expression (Register or Literal) */
       String reg = n.f3.accept(this, "##");
       String reg_n1 = symbol_table.get_register();
       if(reg.substring(0, 1).equals("%")) // register
          emit("\n\t" + reg_n1 + " = load i32, i32* " + reg);
-      else // literal
-         emit("\n\tstore i32 " + reg + ", i32* " + reg_n1);
+      else      
+         reg_n1 = reg;
 
+      
+      /* Bounds check */
       String reg_n2 = symbol_table.get_register();
       emit("\n\t" + reg_n2 + "  = icmp slt i32 " + reg_n1 + ", 0");
 
+      /* Branch if-then-else */
       String then_lbl = symbol_table.get_arr_label();
       String else_lbl = symbol_table.get_arr_label();
-      emit("\n\tbr i1 " + reg_n2 + ", label " + then_lbl + ", label " + else_lbl);
+      emit("\n\tbr i1 " + reg_n2 + ", label %" + then_lbl + ", label %" + else_lbl);
       emit("\n\n");
+
+      /* Then */
       emit(then_lbl + ":");
       emit("\n\tcall void @throw_oob()");
-      emit("\n\tbr label " + else_lbl);
+      emit("\n\tbr label %" + else_lbl);
       emit("\n\n");
+      
+      /* Else */
       emit(else_lbl + ":");
 
+      /* Add + 1 to size, reserve space for array length */
       String reg_n3 = symbol_table.get_register();
       emit("\n\t" + reg_n3 + " = add i32 " + reg_n1 + ", 1");
       
+      /* Allocate space for int array */
       String reg_n4 = symbol_table.get_register();
       emit("\n\t" + reg_n4 + " = call i8* @calloc(i32 4, i32 " + reg_n3 + ")");
 
+      /* Store array length at first cell */
       String reg_n5 = symbol_table.get_register();
       emit("\n\t" + reg_n5 + " = bitcast i8* " + reg_n4 + " to i32*");
-      emit("\n\tstore i32 " + reg_n1 + ", i32* " + reg_n5); // store length at start 
+      emit("\n\tstore i32 " + reg_n1 + ", i32* " + reg_n5); 
 
+      /* Insert register in symbol_table */
       symbol_table.insert(reg_n5, reg_n5, "int[]");
       return reg_n5;
    }
@@ -679,50 +753,46 @@ public class LoweringVisitor extends GJDepthFirst<String, String>{
     * f3 -> ")"
     */
    public String visit(AllocationExpression n, String argu) throws Exception {
-      String type = n.f1.accept(this, argu);
-      ClassOffsets class_info = symbol_table.get_classes().get(type);
+      /* Get class name to be created */
+      String class_name = n.f1.accept(this, argu);
+      ClassOffsets class_info = symbol_table.get_classes().get(class_name);
 
+      /* Get size of object and its vtable */ 
       int size = class_info.get_size();
       int vt_size = class_info.get_vt_size();
 
+      /* Allocate space for object */
       String size_str = Integer.toString(size);
       String reg_n0 = symbol_table.get_register();
-      emit("\n\t" + reg_n0 + " = call i8* calloc(i32, i32 " + size_str + ")" );
+      emit("\n\t" + reg_n0 + " = call i8* @calloc(i32 1, i32 " + size_str + ")" );
       
+      /* Point to vtable of class */
       String reg_n1 = symbol_table.get_register();
       emit("\n\t" + reg_n1 + " = bitcast i8* " + reg_n0 + " to i8***");
-
       String reg_n2 = symbol_table.get_register();
-      emit("\n\t" + reg_n2 + " = getelementptr[" + vt_size + " x i8*], [" + vt_size + " x i8*]* @." + type + "_vtable, i32 0, i32 0");
-
+      emit("\n\t" + reg_n2 + " = getelementptr[" + vt_size + " x i8*], [" + vt_size + " x i8*]* @." + class_name + "_vtable, i32 0, i32 0");
       emit("\n\tstore i8** " + reg_n2 + ", i8*** " + reg_n1);
 
-      symbol_table.insert(reg_n0, reg_n0, type);
+      /* Insert register in symbol_table */
+      symbol_table.insert(reg_n0, reg_n0, class_name);
       return reg_n0;
    }
   
-     /**
-      * f0 -> "!"
-      * f1 -> Clause()
-      */
-     public String visit(NotExpression n, String argu) throws Exception {
-        String _ret=null;
-        n.f0.accept(this, argu);
-        n.f1.accept(this, argu);
-        return _ret;
-     }
+   /**
+    * f0 -> "!"
+    * f1 -> Clause()
+    */
+   public String visit(NotExpression n, String argu) throws Exception {
+      return n.f1.accept(this, argu);
+   }
   
-     /**
-      * f0 -> "("
-      * f1 -> Expression()
-      * f2 -> ")"
-      */
-     public String visit(BracketExpression n, String argu) throws Exception {
-        String _ret=null;
-        n.f0.accept(this, argu);
-        n.f1.accept(this, argu);
-        n.f2.accept(this, argu);
-        return _ret;
-     }
+   /**
+    * f0 -> "("
+    * f1 -> Expression()
+    * f2 -> ")"
+    */
+   public String visit(BracketExpression n, String argu) throws Exception {
+      return n.f1.accept(this, argu);
+   }
 
 }

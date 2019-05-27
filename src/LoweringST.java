@@ -18,8 +18,8 @@ public class LoweringST{
     private Map<String, NameType> current_scope; // Holds all the declared variables with their register name + type, in current scope
  
     private int register_counter; // number of the next register
-    private int arr_alloc;
-
+    private int arr_alloc_lbl; // number of the next label, for array size check, during new int[]
+    private int oob_lbl; // number of the next label, for array bounds check, durign array lookup
     public LoweringST(){
         this.classes = new LinkedHashMap<>();
         this.current_scope = null;
@@ -126,6 +126,10 @@ public class LoweringST{
         this.current_scope.put(name, new NameType(reg_name, type));
     }
 
+    public String lookup(String variable_name){
+        return this.current_scope.get(variable_name).get_type();
+    }
+
 
     public String get_var_reg(String var_name){
         return this.current_scope.get(var_name).get_name();
@@ -134,11 +138,17 @@ public class LoweringST{
     public int get_var_offset(String class_name, String variable_name){
         return this.classes.get(class_name).get_variables().get(variable_name).get_offset();
     }
+
+    public String get_var_type(String class_name, String variable_name){
+        return this.classes.get(class_name).get_variables().get(variable_name).get_type();
+
+    }
     
     public void enter_scope(){
         this.current_scope = new HashMap<>();
         this.register_counter = 0;
-        this.arr_alloc = 0;
+        this.arr_alloc_lbl = 0;
+        this.oob_lbl = 0;
     }
     
     public void exit_scope(){
@@ -159,9 +169,15 @@ public class LoweringST{
     }
 
     public String get_arr_label(){
-        String num = Integer.toString(this.arr_alloc);
-        this.arr_alloc++;
+        String num = Integer.toString(this.arr_alloc_lbl);
+        this.arr_alloc_lbl++;
         return "arr_alloc" + num;
+    }
+
+    public String get_oob_label(){
+        String num = Integer.toString(this.oob_lbl);
+        this.oob_lbl++;
+        return "oob" + num;
     }
 
     /* Accessors */
