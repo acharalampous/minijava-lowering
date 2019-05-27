@@ -5,7 +5,7 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "args": "examples/myExample.java",
+            "args": "examples/lexample.java",
             "type": "java",
             "name": "Debug (Launch) - Current File",
             "request": "launch",

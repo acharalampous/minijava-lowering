@@ -15,7 +15,10 @@ import java.util.*;
 public class LoweringST{
     private Map<String, ClassOffsets> classes; // maps class names with their offset info
 
-    private Map<String, String> current_scope; // Holds all the declared variables with their type, in current scope
+    private Map<String, NameType> current_scope; // Holds all the declared variables with their register name + type, in current scope
+ 
+    private int register_counter; // number of the next register
+    private int arr_alloc;
 
     public LoweringST(){
         this.classes = new LinkedHashMap<>();
@@ -117,10 +120,50 @@ public class LoweringST{
         );
     }
 
+    
+    /* Insert variable in current scope. Keep it's register name and type */
+    public void insert(String name, String reg_name, String type){
+        this.current_scope.put(name, new NameType(reg_name, type));
+    }
+
+
+    public String get_var_reg(String var_name){
+        return this.current_scope.get(var_name).get_name();
+    }
+
+    public int get_var_offset(String class_name, String variable_name){
+        return this.classes.get(class_name).get_variables().get(variable_name).get_offset();
+    }
+    
+    public void enter_scope(){
+        this.current_scope = new HashMap<>();
+        this.register_counter = 0;
+        this.arr_alloc = 0;
+    }
+    
+    public void exit_scope(){
+        this.current_scope = null;
+    }
+
     public void print_all(){
         for (Map.Entry<String, ClassOffsets> entry : this.classes.entrySet()){
             System.out.println("\n\n" + entry.getKey());
             entry.getValue().print_all();
         }
     }
+
+    public String get_register(){
+        String num = Integer.toString(this.register_counter);
+        this.register_counter++;
+        return "%_" + num;
+    }
+
+    public String get_arr_label(){
+        String num = Integer.toString(this.arr_alloc);
+        this.arr_alloc++;
+        return "arr_alloc" + num;
+    }
+
+    /* Accessors */
+    public Map<String, ClassOffsets> get_classes(){ return this.classes; } 
 }
