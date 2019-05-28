@@ -22,6 +22,16 @@ public class LoweringVisitor extends GJDepthFirst<String, String>{
    private BufferedWriter output_file;
    private String cur_class;
 
+   /* Given a string returns true if it is a number, else false */
+   public boolean isNumber(String str) { 
+      try {  
+         Double.parseDouble(str);  
+         return true;
+      } catch(NumberFormatException e){  
+         return false;  
+      }  
+   }
+
    public LoweringVisitor(LoweringST st, BufferedWriter output_file){
       this.symbol_table = st;
       this.output_file = output_file;
@@ -31,41 +41,45 @@ public class LoweringVisitor extends GJDepthFirst<String, String>{
       this.output_file.write(output);
    }
 
-   /* Prepares a register for the var given. Var can be a local variable, class field or literal */
-   public String load_variable(String var, String type) throws IOException{
-      String reg;
-      if(var.substring(0, 1).equals("%")){ // local register
-         if(type.equals("int[]")) 
-            // emit("\n\t" + reg + " = load i32*, i32** " + var);
-            return var;
-         reg = symbol_table.get_register();
-         if(type.equals("int")) 
-            emit("\n\t" + reg + " = load i32, i32* " + var);
-         else if(type.equals("boolean")) 
-            emit("\n\t" + reg + " = load i8, i8* " + var);
-         else 
-            emit("\n\t" + reg + " = load i8*, i8** " + var);
+	/* Prepares a register for the var given. Var can be a local variable, class field or literal */
+	public String load_variable(String var, String type) throws IOException{
+		String tmp_reg;
+		if(isNumber(var)) // integer literal
+			return var;
+		else if(var.substring(0, 1).equals("%")){ // local register
+			tmp_reg = symbol_table.get_register();	
+		}
+		else{ // identifier
+			tmp_reg = symbol_table.get_var_reg(var);
+			if(tmp_reg == null){ // object variable, must fetch it
+				/* Get variable name and its offset to fetch it from memory */
+				int var_offset = symbol_table.get_var_offset(cur_class, var);
+				
+				/* Get ptr to variable and store it to register */
+				String tmp_reg1 = symbol_table.get_register();
+				emit("\n\t" + tmp_reg1 + " = getelementpr i8, i8* %this, i32 " + var_offset);
+				String l_type = symbol_table.get_llvm_type(type);
+				
+				/* Bitcast to ptr type of variable */
+				tmp_reg = symbol_table.get_register();
+				emit("\n\t" + tmp_reg + " = bitcast i8* " + tmp_reg1 + " to " + l_type + "*");	
+			}
+		}
 
-      }
-      else if(var.length() > 1 && var.substring(0, 2).equals("!!")){ // field of object, must fetch it from memory
-         /* Get variable name and its offset to fetch it from memory */
-         String var_name = var.substring(2); 
-         int var_offset = symbol_table.get_var_offset(cur_class, var_name);
-
-         /* Get ptr to variable and store it to register */
-         String tmp_reg1 = symbol_table.get_register();
-         emit("\n\t" + tmp_reg1 + " = getelementpr i8, i8* %this, i32 " + var_offset);
-         String tmp_reg2 = symbol_table.get_register();
-         emit("\n\t" + tmp_reg2 + " = bitcast i8* " + tmp_reg1 + " to i32*");
-         reg = symbol_table.get_register();
-         emit("\n\t" + reg + " = load i32, i32* " + tmp_reg2);
-      }
-      else // literal provided   
-         reg = var;
-
-      return reg;
-   }
-
+		/* Load variable's value to register and return it */
+		String reg = symbol_table.get_register();
+		if(type.equals("int[]")) 
+			emit("\n\t" + reg + " = load i32*, i32** " + tmp_reg);
+		else if(type.equals("int")) 
+			emit("\n\t" + reg + " = load i32, i32* " + tmp_reg);
+		else if(type.equals("boolean")) 
+			emit("\n\t" + reg + " = load i8, i8* " + tmp_reg);
+		else 
+			emit("\n\t" + reg + " = load i8*, i8** " + tmp_reg);
+		
+		return reg;
+	}
+	
 
 	/**
     * f0 -> MainClass()
@@ -315,12 +329,15 @@ public class LoweringVisitor extends GJDepthFirst<String, String>{
     * f3 -> ";"
     */
    public String visit(AssignmentStatement n, String argu) throws Exception {
-      String reg = n.f0.accept(this, argu);
-      String type = symbol_table.lookup(reg);
-      type = symbol_table.get_llvm_type(type);
+      String id = n.f0.accept(this, "##");
+      String reg = symbol_table.get_var_reg(id);
+      String type = symbol_table.lookup(id);
+
+      String l_type = symbol_table.get_llvm_type(type);
 
       String val = n.f2.accept(this, argu);
-      emit("\n\tstore " + type + " " + val + ", " + type + "* " + reg);
+      val = load_variable(val, type);
+      emit("\n\tstore " + l_type + " " + val + ", " + l_type + "* " + reg);
       return null;
    }
   
@@ -774,13 +791,13 @@ public class LoweringVisitor extends GJDepthFirst<String, String>{
     * f0 -> <IDENTIFIER>
     */
    public String visit(Identifier n, String argu) throws Exception {
-      if(argu != null && argu.equals("##")){ // if var was given, get it's register
-         String ret = symbol_table.get_var_reg(n.f0.tokenImage);
-         if(ret != null) // register found
-            return ret;
-         else // not found, return identifier with a sign in order to be used differently
-            return "!!" + n.f0.tokenImage;
-      }
+      // if(argu != null && argu.equals("##")){ // if var was given, get it's register
+      //    String ret = symbol_table.get_var_reg(n.f0.tokenImage);
+      //    if(ret != null) // register found
+      //       return ret;
+      //    else // not found, return identifier with a sign in order to be used differently
+      //       return "!!" + n.f0.tokenImage;
+      // }
 
       return n.f0.tokenImage;
    }

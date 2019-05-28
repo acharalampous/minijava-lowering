@@ -130,13 +130,22 @@ public class LoweringST{
         this.current_scope.put(name, new NameType(reg_name, type));
     }
 
-    public String lookup(String variable_name){
-        return this.current_scope.get(variable_name).get_type();
+    /* Get type of variable given in current scope */
+    public String lookup(String var_name){
+        NameType co = this.current_scope.get(var_name);
+        if(co != null)
+            return co.get_type();
+        else
+            return null;
     }
 
-
+    /* Get register name of variable given, in current scope */
     public String get_var_reg(String var_name){
-        return this.current_scope.get(var_name).get_name();
+        NameType co = this.current_scope.get(var_name);
+        if(co != null)
+            return co.get_name();
+        else
+            return null;
     }
 
     public int get_var_offset(String class_name, String variable_name){
