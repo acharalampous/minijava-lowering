@@ -35,13 +35,14 @@ public class LoweringVisitor extends GJDepthFirst<String, String>{
    public String load_variable(String var, String type) throws IOException{
       String reg;
       if(var.substring(0, 1).equals("%")){ // local register
+         if(type.equals("int[]")) 
+            // emit("\n\t" + reg + " = load i32*, i32** " + var);
+            return var;
          reg = symbol_table.get_register();
          if(type.equals("int")) 
             emit("\n\t" + reg + " = load i32, i32* " + var);
          else if(type.equals("boolean")) 
             emit("\n\t" + reg + " = load i8, i8* " + var);
-         else if(type.equals("int[]")) 
-            emit("\n\t" + reg + " = load i32*, i32** " + var);
          else 
             emit("\n\t" + reg + " = load i8*, i8** " + var);
 
@@ -417,17 +418,34 @@ public class LoweringVisitor extends GJDepthFirst<String, String>{
         return n.f0.accept(this, argu);
      }
   
-     /**
-      * f0 -> Clause()
-      * f1 -> "&&"
-      * f2 -> Clause()
-      */
-     public String visit(AndExpression n, String argu) throws Exception {
-        n.f0.accept(this, argu);
-        n.f1.accept(this, argu);
-        n.f2.accept(this, argu);
-        return null;
-     }
+   /**
+    * f0 -> Clause()
+    * f1 -> "&&"
+    * f2 -> Clause()
+    */
+   public String visit(AndExpression n, String argu) throws Exception {
+      // String n1 = n.f0.accept(this, argu);
+      // String reg_n1 = load_variable(n1, "boolean");
+
+      // /* Generate and clause labels */
+      // String andlbl1 = symbol_table.get_and_label();
+      // String andlbl2 = symbol_table.get_and_label();
+      // String andlbl3 = symbol_table.get_and_label();
+      // String andlbl4 = symbol_table.get_and_label();
+
+      // emit("\n\tbr label %" + andlbl1);
+      // emit("\n\n");
+      // emit(andlbl1 + ":");
+      // emit("\n\tbr i1 " + reg_n1 + ", label %" + andlbl2 + ", label %" + andlbl4);
+
+      // emit("\n\n");
+      // emit(andlbl2 + ":");
+
+
+
+      // String n2 =n.f2.accept(this, argu);
+      return null;
+   }
   
    /**
     * f0 -> PrimaryExpression()
@@ -579,75 +597,75 @@ public class LoweringVisitor extends GJDepthFirst<String, String>{
       return reg_n3;
    }
 
-     /**
-      * f0 -> PrimaryExpression()
-      * f1 -> "."
-      * f2 -> Identifier()
-      * f3 -> "("
-      * f4 -> ( ExpressionList() )?
-      * f5 -> ")"
-      */
-     public String visit(MessageSend n, String argu) throws Exception {
-        String _ret=null;
-        n.f0.accept(this, argu);
-        n.f1.accept(this, argu);
-        n.f2.accept(this, argu);
-        n.f3.accept(this, argu);
-        n.f4.accept(this, argu);
-        n.f5.accept(this, argu);
-        return _ret;
-     }
+               /**
+                  * f0 -> PrimaryExpression()
+                  * f1 -> "."
+                  * f2 -> Identifier()
+                  * f3 -> "("
+                  * f4 -> ( ExpressionList() )?
+                  * f5 -> ")"
+                  */
+               public String visit(MessageSend n, String argu) throws Exception {
+                  String _ret=null;
+                  n.f0.accept(this, argu);
+                  n.f1.accept(this, argu);
+                  n.f2.accept(this, argu);
+                  n.f3.accept(this, argu);
+                  n.f4.accept(this, argu);
+                  n.f5.accept(this, argu);
+                  return _ret;
+               }
+            
+               /**
+                  * f0 -> Expression()
+                  * f1 -> ExpressionTail()
+                  */
+               public String visit(ExpressionList n, String argu) throws Exception {
+                  String _ret=null;
+                  n.f0.accept(this, argu);
+                  n.f1.accept(this, argu);
+                  return _ret;
+               }
+            
+               /**
+                  * f0 -> ( ExpressionTerm() )*
+                  */
+               public String visit(ExpressionTail n, String argu) throws Exception {
+                  return n.f0.accept(this, argu);
+               }
+            
+               /**
+                  * f0 -> ","
+                  * f1 -> Expression()
+                  */
+               public String visit(ExpressionTerm n, String argu) throws Exception {
+                  String _ret=null;
+                  n.f0.accept(this, argu);
+                  n.f1.accept(this, argu);
+                  return _ret;
+               }
   
-     /**
-      * f0 -> Expression()
-      * f1 -> ExpressionTail()
-      */
-     public String visit(ExpressionList n, String argu) throws Exception {
-        String _ret=null;
-        n.f0.accept(this, argu);
-        n.f1.accept(this, argu);
-        return _ret;
-     }
-  
-     /**
-      * f0 -> ( ExpressionTerm() )*
-      */
-     public String visit(ExpressionTail n, String argu) throws Exception {
-        return n.f0.accept(this, argu);
-     }
-  
-     /**
-      * f0 -> ","
-      * f1 -> Expression()
-      */
-     public String visit(ExpressionTerm n, String argu) throws Exception {
-        String _ret=null;
-        n.f0.accept(this, argu);
-        n.f1.accept(this, argu);
-        return _ret;
-     }
-  
-     /**
-      * f0 -> NotExpression()
-      *       | PrimaryExpression()
-      */
-     public String visit(Clause n, String argu) throws Exception {
-        return n.f0.accept(this, argu);
-     }
-  
-     /**
-      * f0 -> IntegerLiteral()
-      *       | TrueLiteral()
-      *       | FalseLiteral()
-      *       | Identifier()
-      *       | ThisExpression()
-      *       | ArrayAllocationExpression()
-      *       | AllocationExpression()
-      *       | BracketExpression()
-      */
-     public String visit(PrimaryExpression n, String argu) throws Exception {
-        return n.f0.accept(this, argu);
-     }
+   /**
+    * f0 -> NotExpression()
+    *       | PrimaryExpression()
+    */
+   public String visit(Clause n, String argu) throws Exception {
+      return n.f0.accept(this, argu);
+   }
+
+   /**
+    * f0 -> IntegerLiteral()
+    *       | TrueLiteral()
+    *       | FalseLiteral()
+    *       | Identifier()
+    *       | ThisExpression()
+    *       | ArrayAllocationExpression()
+    *       | AllocationExpression()
+    *       | BracketExpression()
+    */
+   public String visit(PrimaryExpression n, String argu) throws Exception {
+      return n.f0.accept(this, argu);
+   }
   
    /**
     * f0 -> <INTEGER_LITERAL>
@@ -702,11 +720,13 @@ public class LoweringVisitor extends GJDepthFirst<String, String>{
    public String visit(ArrayAllocationExpression n, String argu) throws Exception {
       /* Get Expression (Register or Literal) */
       String reg = n.f3.accept(this, "##");
-      String reg_n1 = symbol_table.get_register();
-      if(reg.substring(0, 1).equals("%")) // register
-         emit("\n\t" + reg_n1 + " = load i32, i32* " + reg);
-      else      
-         reg_n1 = reg;
+      String reg_n1 = load_variable(reg, "int");
+      
+      // String reg_n1 = symbol_table.get_register();
+      // if(reg.substring(0, 1).equals("%")) // register
+      //    emit("\n\t" + reg_n1 + " = load i32, i32* " + reg);
+      // else      
+      //    reg_n1 = reg;
 
       
       /* Bounds check */
@@ -783,7 +803,15 @@ public class LoweringVisitor extends GJDepthFirst<String, String>{
     * f1 -> Clause()
     */
    public String visit(NotExpression n, String argu) throws Exception {
-      return n.f1.accept(this, argu);
+      /* Get Register/Literal to perform not ~ */
+      String var = n.f1.accept(this, argu);
+      var = load_variable(var, "boolean");
+
+      /* Perform not expression on value */
+      String reg_n1 = symbol_table.get_register();
+      emit("\n\t" + reg_n1 + " = xor " + var + ", 1");
+
+      return reg_n1;
    }
   
    /**
