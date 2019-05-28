@@ -348,104 +348,144 @@ public class LoweringVisitor extends GJDepthFirst<String, String>{
         return _ret;
      }
   
-     /**
-      * f0 -> "if"
-      * f1 -> "("
-      * f2 -> Expression()
-      * f3 -> ")"
-      * f4 -> Statement()
-      * f5 -> "else"
-      * f6 -> Statement()
-      */
-     public String visit(IfStatement n, String argu) throws Exception {
-        String _ret=null;
-        n.f0.accept(this, argu);
-        n.f1.accept(this, argu);
-        n.f2.accept(this, argu);
-        n.f3.accept(this, argu);
-        n.f4.accept(this, argu);
-        n.f5.accept(this, argu);
-        n.f6.accept(this, argu);
-        return _ret;
-     }
-  
-     /**
-      * f0 -> "while"
-      * f1 -> "("
-      * f2 -> Expression()
-      * f3 -> ")"
-      * f4 -> Statement()
-      */
-     public String visit(WhileStatement n, String argu) throws Exception {
-        String _ret=null;
-        n.f0.accept(this, argu);
-        n.f1.accept(this, argu);
-        n.f2.accept(this, argu);
-        n.f3.accept(this, argu);
-        n.f4.accept(this, argu);
-        return _ret;
-     }
-  
-     /**
-      * f0 -> "System.out.println"
-      * f1 -> "("
-      * f2 -> Expression()
-      * f3 -> ")"
-      * f4 -> ";"
-      */
-     public String visit(PrintStatement n, String argu) throws Exception {
-        String _ret=null;
-        n.f0.accept(this, argu);
-        n.f1.accept(this, argu);
-        n.f2.accept(this, argu);
-        n.f3.accept(this, argu);
-        n.f4.accept(this, argu);
-        return _ret;
-     }
-  
-     /**
-      * f0 -> AndExpression()
-      *       | CompareExpression()
-      *       | PlusExpression()
-      *       | MinusExpression()
-      *       | TimesExpression()
-      *       | ArrayLookup()
-      *       | ArrayLength()
-      *       | MessageSend()
-      *       | Clause()
-      */
-     public String visit(Expression n, String argu) throws Exception {
-        return n.f0.accept(this, argu);
-     }
-  
    /**
-    * f0 -> Clause()
-    * f1 -> "&&"
-    * f2 -> Clause()
-    */
-   public String visit(AndExpression n, String argu) throws Exception {
-      // String n1 = n.f0.accept(this, argu);
-      // String reg_n1 = load_variable(n1, "boolean");
+    * f0 -> "if"
+    * f1 -> "("
+    * f2 -> Expression()
+    * f3 -> ")"
+    * f4 -> Statement()
+    * f5 -> "else"
+    * f6 -> Statement()
+   */
+   public String visit(IfStatement n, String argu) throws Exception {
+      /* Generate if labels for then_else_continue */
+      String then_lbl = symbol_table.get_loop_label();
+      String else_lbl = symbol_table.get_loop_label();
+      String con_lbl = symbol_table.get_loop_label();
 
-      // /* Generate and clause labels */
-      // String andlbl1 = symbol_table.get_and_label();
-      // String andlbl2 = symbol_table.get_and_label();
-      // String andlbl3 = symbol_table.get_and_label();
-      // String andlbl4 = symbol_table.get_and_label();
+      /* Condition code */
+      String reg = n.f2.accept(this, argu);
 
-      // emit("\n\tbr label %" + andlbl1);
-      // emit("\n\n");
-      // emit(andlbl1 + ":");
-      // emit("\n\tbr i1 " + reg_n1 + ", label %" + andlbl2 + ", label %" + andlbl4);
+      /* Print condition check */
+      emit("\n\tbr i1 " + reg + ", label %" + then_lbl + ", label %" + else_lbl);
+      emit("\n\n");
+      emit(then_lbl + ":");
+      
+      /* Then code */
+      n.f4.accept(this, argu);      
+      
+      emit("\n\tbr label %" + con_lbl);
+      emit("\n\n");
+      emit(else_lbl + ":");
+      
+      /* Else code */
+      n.f4.accept(this, argu);
+      emit("\n\tbr label %" + con_lbl);
+      emit("\n\n");
 
-      // emit("\n\n");
-      // emit(andlbl2 + ":");
+      /* Continue after if */
+      emit(con_lbl + ":");
 
-
-
-      // String n2 =n.f2.accept(this, argu);
       return null;
    }
+  
+   /**
+    * f0 -> "while"
+    * f1 -> "("
+    * f2 -> Expression()
+    * f3 -> ")"
+    * f4 -> Statement()
+    */
+   public String visit(WhileStatement n, String argu) throws Exception {
+      /* Generate loop labels for loop_check-loop_body-after_loop */
+      String loop_lbl = symbol_table.get_loop_label();
+      String then_lbl = symbol_table.get_loop_label();
+      String else_lbl = symbol_table.get_loop_label();
+
+      /* Print loob start */
+      emit("\n\tbr label %" + loop_lbl);
+      emit("\n\n");
+      emit(loop_lbl + ":");
+
+      /* Condition code */
+      String reg = n.f2.accept(this, argu);
+      emit("\n\tbr i1 " + reg + ", label %" + then_lbl + ", label %" + else_lbl);
+      
+      /* Loop Body code */
+      emit("\n\n");
+      emit(then_lbl + ":");
+      n.f4.accept(this, argu);
+      
+      /* Loop Condition recheck code */ 
+      emit("\n\tbr label %" + loop_lbl);
+
+      /* Continue after loop */
+      emit("\n\n");
+      emit(else_lbl + ":");
+
+      return null;
+   }
+  
+               /**
+                  * f0 -> "System.out.println"
+                  * f1 -> "("
+                  * f2 -> Expression()
+                  * f3 -> ")"
+                  * f4 -> ";"
+                  */
+               public String visit(PrintStatement n, String argu) throws Exception {
+                  String _ret=null;
+                  n.f0.accept(this, argu);
+                  n.f1.accept(this, argu);
+                  n.f2.accept(this, argu);
+                  n.f3.accept(this, argu);
+                  n.f4.accept(this, argu);
+                  return _ret;
+               }
+            
+               /**
+                  * f0 -> AndExpression()
+                  *       | CompareExpression()
+                  *       | PlusExpression()
+                  *       | MinusExpression()
+                  *       | TimesExpression()
+                  *       | ArrayLookup()
+                  *       | ArrayLength()
+                  *       | MessageSend()
+                  *       | Clause()
+                  */
+               public String visit(Expression n, String argu) throws Exception {
+                  return n.f0.accept(this, argu);
+               }
+  
+               /**
+                * f0 -> Clause()
+               * f1 -> "&&"
+               * f2 -> Clause()
+               */
+               public String visit(AndExpression n, String argu) throws Exception {
+                  // String n1 = n.f0.accept(this, argu);
+                  // String reg_n1 = load_variable(n1, "boolean");
+
+                  // /* Generate and clause labels */
+                  // String andlbl1 = symbol_table.get_and_label();
+                  // String andlbl2 = symbol_table.get_and_label();
+                  // String andlbl3 = symbol_table.get_and_label();
+                  // String andlbl4 = symbol_table.get_and_label();
+
+                  // emit("\n\tbr label %" + andlbl1);
+                  // emit("\n\n");
+                  // emit(andlbl1 + ":");
+                  // emit("\n\tbr i1 " + reg_n1 + ", label %" + andlbl2 + ", label %" + andlbl4);
+
+                  // emit("\n\n");
+                  // emit(andlbl2 + ":");
+
+
+
+                  // String n2 =n.f2.accept(this, argu);
+                  return null;
+               }
   
    /**
     * f0 -> PrimaryExpression()

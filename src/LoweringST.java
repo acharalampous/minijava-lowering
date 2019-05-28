@@ -20,7 +20,9 @@ public class LoweringST{
     private int register_counter; // number of the next register
     private int arr_alloc_lbl; // number of the next label, for array size check, during new int[]
     private int oob_lbl; // number of the next label, for array bounds check, durign array lookup
-    private int and_lbl;
+    private int and_lbl; // number of the next label, for and clause
+    private int if_lbl; // number for the next if label
+    private int loop_lbl; // number for the next loop label
     
     public LoweringST(){
         this.classes = new LinkedHashMap<>();
@@ -152,6 +154,8 @@ public class LoweringST{
         this.arr_alloc_lbl = 0;
         this.oob_lbl = 0;
         this.and_lbl = 0;
+        this.loop_lbl = 0;
+        this.if_lbl = 0;
     }
     
     public void exit_scope(){
@@ -188,6 +192,18 @@ public class LoweringST{
         String num = Integer.toString(this.and_lbl);
         this.and_lbl++;
         return "andclause" + num;
+    }
+
+    public String get_if_label(){
+        String num = Integer.toString(this.if_lbl);
+        this.if_lbl++;
+        return "if" + num;
+    }
+
+    public String get_loop_label(){
+        String num = Integer.toString(this.loop_lbl);
+        this.loop_lbl++;
+        return "loop" + num;
     }
 
     /* Accessors */
