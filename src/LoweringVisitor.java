@@ -254,78 +254,75 @@ public class LoweringVisitor extends GJDepthFirst<String, String>{
         return _ret;
      }
   
-     /**
-      * f0 -> ArrayType()
-      *       | BooleanType()
-      *       | IntegerType()
-      *       | Identifier()
-      */
-     public String visit(Type n, String argu) throws Exception {
-        return n.f0.accept(this, argu);
-     }
+   /**
+    * f0 -> ArrayType()
+    *       | BooleanType()
+    *       | IntegerType()
+    *       | Identifier()
+    */
+   public String visit(Type n, String argu) throws Exception {
+      return n.f0.accept(this, argu);
+   }
   
-     /**
-      * f0 -> "int"
-      * f1 -> "["
-      * f2 -> "]"
-      */
-     public String visit(ArrayType n, String argu) throws Exception {
-        return "int[]";
-     }
+   /**
+    * f0 -> "int"
+    * f1 -> "["
+    * f2 -> "]"
+    */
+   public String visit(ArrayType n, String argu) throws Exception {
+      return "int[]";
+   }
   
-     /**
-      * f0 -> "boolean"
-      */
-     public String visit(BooleanType n, String argu) throws Exception {
-        return "boolean";
-     }
+   /**
+    * f0 -> "boolean"
+    */
+   public String visit(BooleanType n, String argu) throws Exception {
+      return "boolean";
+   }
   
-     /**
-      * f0 -> "int"
-      */
-     public String visit(IntegerType n, String argu) throws Exception {
-        return "int";
-     }
+   /**
+    * f0 -> "int"
+    */
+   public String visit(IntegerType n, String argu) throws Exception {
+      return "int";
+   }
   
-     /**
-      * f0 -> Block()
-      *       | AssignmentStatement()
-      *       | ArrayAssignmentStatement()
-      *       | IfStatement()
-      *       | WhileStatement()
-      *       | PrintStatement()
-      */
-     public String visit(Statement n, String argu) throws Exception {
-        return n.f0.accept(this, argu);
-     }
+   /**
+    * f0 -> Block()
+    *       | AssignmentStatement()
+    *       | ArrayAssignmentStatement()
+    *       | IfStatement()
+    *       | WhileStatement()
+    *       | PrintStatement()
+   */
+   public String visit(Statement n, String argu) throws Exception {
+      return n.f0.accept(this, argu);
+   }
   
-     /**
-      * f0 -> "{"
-      * f1 -> ( Statement() )*
-      * f2 -> "}"
-      */
-     public String visit(Block n, String argu) throws Exception {
-        String _ret=null;
-        n.f0.accept(this, argu);
-        n.f1.accept(this, argu);
-        n.f2.accept(this, argu);
-        return _ret;
-     }
+   /**
+   * f0 -> "{"
+   * f1 -> ( Statement() )*
+   * f2 -> "}"
+   */
+   public String visit(Block n, String argu) throws Exception {
+      return n.f1.accept(this, argu);
+   }
   
-     /**
-      * f0 -> Identifier()
-      * f1 -> "="
-      * f2 -> Expression()
-      * f3 -> ";"
-      */
-     public String visit(AssignmentStatement n, String argu) throws Exception {
-        String _ret=null;
-        n.f0.accept(this, argu);
-        n.f1.accept(this, argu);
-        n.f2.accept(this, argu);
-        n.f3.accept(this, argu);
-        return _ret;
-     }
+   /**
+    * f0 -> Identifier()
+    * f1 -> "="
+    * f2 -> Expression()
+    * f3 -> ";"
+    */
+   public String visit(AssignmentStatement n, String argu) throws Exception {
+      String reg = n.f0.accept(this, argu);
+      String type = symbol_table.lookup(reg);
+      type = symbol_table.get_llvm_type(type);
+
+      String val = n.f2.accept(this, argu);
+      emit("\n\tstore " + type + " " + val + ", " + type + "* " + reg);
+      return null;
+   }
   
    /**
     * f0 -> Identifier()
