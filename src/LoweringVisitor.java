@@ -327,26 +327,71 @@ public class LoweringVisitor extends GJDepthFirst<String, String>{
         return _ret;
      }
   
-     /**
-      * f0 -> Identifier()
-      * f1 -> "["
-      * f2 -> Expression()
-      * f3 -> "]"
-      * f4 -> "="
-      * f5 -> Expression()
-      * f6 -> ";"
-      */
-     public String visit(ArrayAssignmentStatement n, String argu) throws Exception {
-        String _ret=null;
-        n.f0.accept(this, argu);
-        n.f1.accept(this, argu);
-        n.f2.accept(this, argu);
-        n.f3.accept(this, argu);
-        n.f4.accept(this, argu);
-        n.f5.accept(this, argu);
-        n.f6.accept(this, argu);
-        return _ret;
-     }
+   /**
+    * f0 -> Identifier()
+    * f1 -> "["
+    * f2 -> Expression()
+    * f3 -> "]"
+    * f4 -> "="
+    * f5 -> Expression()
+    * f6 -> ";"
+   */
+   public String visit(ArrayAssignmentStatement n, String argu) throws Exception {
+      /* Get array variable register */
+      String reg_n1 = n.f0.accept(this, "##");
+      reg_n1 = load_variable(reg_n1, "int[]"); 
+
+      /* Get index register */
+      String index = n.f2.accept(this, "##");
+      index = load_variable(index, "int");
+      
+      /* Get array length from first cell */
+      String reg_n2 = symbol_table.get_register();
+      emit("\n\t" + reg_n2 + " = getelementptr i32, i32* " + reg_n1 + ", i32 0");
+
+      /* Load size to register */
+      String reg_n3 = symbol_table.get_register();
+      emit("\n\t" + reg_n3 + " = load i32, i32* " + reg_n2);
+
+      /* Perform out of bounds check */
+      String reg_n4 = symbol_table.get_register();
+      emit("\n\t" + reg_n4 + " = icmp ult i32 " + index + ", " + reg_n3);
+
+      /* Transform ult to "umt" */
+      String reg_n5 = symbol_table.get_register();
+      emit("\n\t" + reg_n5 + " = xor i1 " + reg_n4 + ", 1");
+
+      /* Branch if-then-else */
+      String then_lbl = symbol_table.get_oob_label();
+      String else_lbl = symbol_table.get_oob_label();
+      emit("\n\tbr i1 " + reg_n5 + ", label %" + then_lbl + ", label %" + else_lbl);
+      emit("\n\n");
+      
+      /* Then */
+      emit(then_lbl + ":");
+      emit("\n\tcall void @throw_oob()");
+      emit("\n\tbr label %" + else_lbl);
+      emit("\n\n");
+      
+      
+      /* Else */
+      emit(else_lbl + ":");
+      
+      /* Add + 1 to size, to bypass length cell */
+      String reg_n6 = symbol_table.get_register();
+      emit("\n\t" + reg_n6 + " = add i32 " + index + ", 1");
+      
+      /* Get cell to register */
+      String reg_n7 = symbol_table.get_register();
+      emit("\n\t" + reg_n7 + " = getelementptr i32, i32*  " + reg_n1 + ", i32 " + reg_n6);
+      
+      String reg_n8 = n.f5.accept(this, argu);
+      reg_n8 = load_variable(reg_n8, "int");
+
+      emit("\n\tstore i32 " + reg_n8 + ", i32* " + reg_n7);
+
+      return null;
+   }
   
    /**
     * f0 -> "if"
