@@ -47,7 +47,7 @@ public class LoweringVisitor extends GJDepthFirst<String, String>{
 		if(isNumber(var)) // integer literal
 			return var;
 		else if(var.substring(0, 1).equals("%")){ // local register
-			tmp_reg = symbol_table.get_register();	
+			tmp_reg = var;	
 		}
 		else{ // identifier
 			tmp_reg = symbol_table.get_var_reg(var);
@@ -66,17 +66,22 @@ public class LoweringVisitor extends GJDepthFirst<String, String>{
 			}
 		}
 
+      String reg;
 		/* Load variable's value to register and return it */
-		String reg = symbol_table.get_register();
 		if(type.equals("int[]")) 
-			emit("\n\t" + reg + " = load i32*, i32** " + tmp_reg);
-		else if(type.equals("int")) 
-			emit("\n\t" + reg + " = load i32, i32* " + tmp_reg);
-		else if(type.equals("boolean")) 
-			emit("\n\t" + reg + " = load i8, i8* " + tmp_reg);
-		else 
-			emit("\n\t" + reg + " = load i8*, i8** " + tmp_reg);
-		
+      // emit("\n\t" + reg + " = load i32*, i32** " + tmp_reg);
+         reg = tmp_reg;
+      else{
+         reg = symbol_table.get_register();
+
+         if(type.equals("int")) 
+		   	emit("\n\t" + reg + " = load i32, i32* " + tmp_reg);
+         else if(type.equals("boolean")) 
+		   	emit("\n\t" + reg + " = load i8, i8* " + tmp_reg);
+         else 
+		   	emit("\n\t" + reg + " = load i8*, i8** " + tmp_reg);
+      }
+         
 		return reg;
 	}
 	
@@ -128,55 +133,55 @@ public class LoweringVisitor extends GJDepthFirst<String, String>{
       return null;
    }
   
-     /**
-      * f0 -> ClassDeclaration()
-      *       | ClassExtendsDeclaration()
-      */
-     public String visit(TypeDeclaration n, String argu) throws Exception {
-        return n.f0.accept(this, argu);
-     }
-  
-     /**
-      * f0 -> "class"
-      * f1 -> Identifier()
-      * f2 -> "{"
-      * f3 -> ( VarDeclaration() )*
-      * f4 -> ( MethodDeclaration() )*
-      * f5 -> "}"
-      */
-     public String visit(ClassDeclaration n, String argu) throws Exception {
-        String _ret=null;
-        n.f0.accept(this, argu);
-        n.f1.accept(this, argu);
-        n.f2.accept(this, argu);
-        n.f3.accept(this, argu);
-        n.f4.accept(this, argu);
-        n.f5.accept(this, argu);
-        return _ret;
-     }
-  
-     /**
-      * f0 -> "class"
-      * f1 -> Identifier()
-      * f2 -> "extends"
-      * f3 -> Identifier()
-      * f4 -> "{"
-      * f5 -> ( VarDeclaration() )*
-      * f6 -> ( MethodDeclaration() )*
-      * f7 -> "}"
-      */
-     public String visit(ClassExtendsDeclaration n, String argu) throws Exception {
-        String _ret=null;
-        n.f0.accept(this, argu);
-        n.f1.accept(this, argu);
-        n.f2.accept(this, argu);
-        n.f3.accept(this, argu);
-        n.f4.accept(this, argu);
-        n.f5.accept(this, argu);
-        n.f6.accept(this, argu);
-        n.f7.accept(this, argu);
-        return _ret;
-     }
+                     /**
+                        * f0 -> ClassDeclaration()
+                        *       | ClassExtendsDeclaration()
+                        */
+                     public String visit(TypeDeclaration n, String argu) throws Exception {
+                        return n.f0.accept(this, argu);
+                     }
+                  
+                     /**
+                        * f0 -> "class"
+                        * f1 -> Identifier()
+                        * f2 -> "{"
+                        * f3 -> ( VarDeclaration() )*
+                        * f4 -> ( MethodDeclaration() )*
+                        * f5 -> "}"
+                        */
+                     public String visit(ClassDeclaration n, String argu) throws Exception {
+                        String _ret=null;
+                        n.f0.accept(this, argu);
+                        n.f1.accept(this, argu);
+                        n.f2.accept(this, argu);
+                        n.f3.accept(this, argu);
+                        n.f4.accept(this, argu);
+                        n.f5.accept(this, argu);
+                        return _ret;
+                     }
+                  
+                     /**
+                        * f0 -> "class"
+                        * f1 -> Identifier()
+                        * f2 -> "extends"
+                        * f3 -> Identifier()
+                        * f4 -> "{"
+                        * f5 -> ( VarDeclaration() )*
+                        * f6 -> ( MethodDeclaration() )*
+                        * f7 -> "}"
+                        */
+                     public String visit(ClassExtendsDeclaration n, String argu) throws Exception {
+                        String _ret=null;
+                        n.f0.accept(this, argu);
+                        n.f1.accept(this, argu);
+                        n.f2.accept(this, argu);
+                        n.f3.accept(this, argu);
+                        n.f4.accept(this, argu);
+                        n.f5.accept(this, argu);
+                        n.f6.accept(this, argu);
+                        n.f7.accept(this, argu);
+                        return _ret;
+                     }
   
    /**
     * f0 -> Type()
@@ -191,82 +196,82 @@ public class LoweringVisitor extends GJDepthFirst<String, String>{
       emit("\t%" + id + " = alloca " + llvm_type);
       emit("\n");
 
-      symbol_table.insert(id, "%" + id, type);
+      symbol_table.insert(id, "%" + id, llvm_type + "*");
       return null;
    }
   
-     /**
-      * f0 -> "public"
-      * f1 -> Type()
-      * f2 -> Identifier()
-      * f3 -> "("
-      * f4 -> ( FormalParameterList() )?
-      * f5 -> ")"
-      * f6 -> "{"
-      * f7 -> ( VarDeclaration() )*
-      * f8 -> ( Statement() )*
-      * f9 -> "return"
-      * f10 -> Expression()
-      * f11 -> ";"
-      * f12 -> "}"
-      */
-     public String visit(MethodDeclaration n, String argu) throws Exception {
-        String _ret=null;
-        n.f0.accept(this, argu);
-        n.f1.accept(this, argu);
-        n.f2.accept(this, argu);
-        n.f3.accept(this, argu);
-        n.f4.accept(this, argu);
-        n.f5.accept(this, argu);
-        n.f6.accept(this, argu);
-        n.f7.accept(this, argu);
-        n.f8.accept(this, argu);
-        n.f9.accept(this, argu);
-        n.f10.accept(this, argu);
-        n.f11.accept(this, argu);
-        n.f12.accept(this, argu);
-        return _ret;
-     }
+                  /**
+                     * f0 -> "public"
+                     * f1 -> Type()
+                     * f2 -> Identifier()
+                     * f3 -> "("
+                     * f4 -> ( FormalParameterList() )?
+                     * f5 -> ")"
+                     * f6 -> "{"
+                     * f7 -> ( VarDeclaration() )*
+                     * f8 -> ( Statement() )*
+                     * f9 -> "return"
+                     * f10 -> Expression()
+                     * f11 -> ";"
+                     * f12 -> "}"
+                     */
+                  public String visit(MethodDeclaration n, String argu) throws Exception {
+                     String _ret=null;
+                     n.f0.accept(this, argu);
+                     n.f1.accept(this, argu);
+                     n.f2.accept(this, argu);
+                     n.f3.accept(this, argu);
+                     n.f4.accept(this, argu);
+                     n.f5.accept(this, argu);
+                     n.f6.accept(this, argu);
+                     n.f7.accept(this, argu);
+                     n.f8.accept(this, argu);
+                     n.f9.accept(this, argu);
+                     n.f10.accept(this, argu);
+                     n.f11.accept(this, argu);
+                     n.f12.accept(this, argu);
+                     return _ret;
+                  }
   
-     /**
-      * f0 -> FormalParameter()
-      * f1 -> FormalParameterTail()
-      */
-     public String visit(FormalParameterList n, String argu) throws Exception {
-        String _ret=null;
-        n.f0.accept(this, argu);
-        n.f1.accept(this, argu);
-        return _ret;
-     }
-  
-     /**
-      * f0 -> Type()
-      * f1 -> Identifier()
-      */
-     public String visit(FormalParameter n, String argu) throws Exception {
-        String _ret=null;
-        n.f0.accept(this, argu);
-        n.f1.accept(this, argu);
-        return _ret;
-     }
-  
-     /**
-      * f0 -> ( FormalParameterTerm() )*
-      */
-     public String visit(FormalParameterTail n, String argu) throws Exception {
-        return n.f0.accept(this, argu);
-     }
-  
-     /**
-      * f0 -> ","
-      * f1 -> FormalParameter()
-      */
-     public String visit(FormalParameterTerm n, String argu) throws Exception {
-        String _ret=null;
-        n.f0.accept(this, argu);
-        n.f1.accept(this, argu);
-        return _ret;
-     }
+                  /**
+                     * f0 -> FormalParameter()
+                     * f1 -> FormalParameterTail()
+                     */
+                  public String visit(FormalParameterList n, String argu) throws Exception {
+                     String _ret=null;
+                     n.f0.accept(this, argu);
+                     n.f1.accept(this, argu);
+                     return _ret;
+                  }
+               
+                  /**
+                     * f0 -> Type()
+                     * f1 -> Identifier()
+                     */
+                  public String visit(FormalParameter n, String argu) throws Exception {
+                     String _ret=null;
+                     n.f0.accept(this, argu);
+                     n.f1.accept(this, argu);
+                     return _ret;
+                  }
+               
+                  /**
+                     * f0 -> ( FormalParameterTerm() )*
+                     */
+                  public String visit(FormalParameterTail n, String argu) throws Exception {
+                     return n.f0.accept(this, argu);
+                  }
+               
+                  /**
+                     * f0 -> ","
+                     * f1 -> FormalParameter()
+                     */
+                  public String visit(FormalParameterTerm n, String argu) throws Exception {
+                     String _ret=null;
+                     n.f0.accept(this, argu);
+                     n.f1.accept(this, argu);
+                     return _ret;
+                  }
   
    /**
     * f0 -> ArrayType()
@@ -329,15 +334,20 @@ public class LoweringVisitor extends GJDepthFirst<String, String>{
     * f3 -> ";"
     */
    public String visit(AssignmentStatement n, String argu) throws Exception {
-      String id = n.f0.accept(this, "##");
+      /* Get variable, it's register and type */
+      String id = n.f0.accept(this, null);
       String reg = symbol_table.get_var_reg(id);
       String type = symbol_table.lookup(id);
 
       String l_type = symbol_table.get_llvm_type(type);
 
+      /* Load value to be stored */
       String val = n.f2.accept(this, argu);
       val = load_variable(val, type);
+
+      /* Store value in register */
       emit("\n\tstore " + l_type + " " + val + ", " + l_type + "* " + reg);
+      
       return null;
    }
   
@@ -352,11 +362,11 @@ public class LoweringVisitor extends GJDepthFirst<String, String>{
    */
    public String visit(ArrayAssignmentStatement n, String argu) throws Exception {
       /* Get array variable register */
-      String reg_n1 = n.f0.accept(this, "##");
+      String reg_n1 = n.f0.accept(this, null);
       reg_n1 = load_variable(reg_n1, "int[]"); 
 
       /* Get index register */
-      String index = n.f2.accept(this, "##");
+      String index = n.f2.accept(this, null);
       index = load_variable(index, "int");
       
       /* Get array length from first cell */
@@ -552,15 +562,16 @@ public class LoweringVisitor extends GJDepthFirst<String, String>{
     * f2 -> PrimaryExpression()
     */
    public String visit(CompareExpression n, String argu) throws Exception {
-      String n1 = n.f0.accept(this, "##");
+      String n1 = n.f0.accept(this, null);
       String reg_n1 = load_variable(n1, "int");
       
-      String n2 = n.f2.accept(this, "##");
+      String n2 = n.f2.accept(this, null);
       String reg_n2 = load_variable(n2, "int");
       
       String reg_n3 = symbol_table.get_register();
       emit("\n\t" + reg_n3 + " = icmp slt i32 " + reg_n1 + ", " + reg_n2);
 
+      symbol_table.insert(reg_n3, reg_n3, "i1");
       return reg_n3;
    }
 
@@ -570,14 +581,16 @@ public class LoweringVisitor extends GJDepthFirst<String, String>{
     * f2 -> PrimaryExpression()
     */
    public String visit(PlusExpression n, String argu) throws Exception {
-      String n1 = n.f0.accept(this, "##");
+      String n1 = n.f0.accept(this, null);
       String reg_n1 = load_variable(n1, "int");
       
-      String n2 = n.f2.accept(this, "##");
+      String n2 = n.f2.accept(this, null);
       String reg_n2 = load_variable(n2, "int");
       
       String reg_n3 = symbol_table.get_register();
       emit("\n\t" + reg_n3 + " = add i32 " + reg_n1 + ", " + reg_n2);
+
+      symbol_table.insert(reg_n3, reg_n3, "i32");
 
       return reg_n3;
    }
@@ -588,15 +601,16 @@ public class LoweringVisitor extends GJDepthFirst<String, String>{
     * f2 -> PrimaryExpression()
     */
    public String visit(MinusExpression n, String argu) throws Exception {
-      String n1 = n.f0.accept(this, "##");
+      String n1 = n.f0.accept(this, null);
       String reg_n1 = load_variable(n1, "int");
       
-      String n2 = n.f2.accept(this, "##");
+      String n2 = n.f2.accept(this, null);
       String reg_n2 = load_variable(n2, "int");
       
       String reg_n3 = symbol_table.get_register();
       emit("\n\t" + reg_n3 + " = sub i32 " + reg_n1 + ", " + reg_n2);
 
+      symbol_table.insert(reg_n3, reg_n3, "i32");
       return reg_n3;
    }
   
@@ -606,14 +620,16 @@ public class LoweringVisitor extends GJDepthFirst<String, String>{
     * f2 -> PrimaryExpression()
     */
    public String visit(TimesExpression n, String argu) throws Exception {
-      String n1 = n.f0.accept(this, "##");
+      String n1 = n.f0.accept(this, null);
       String reg_n1 = load_variable(n1, "int");
       
-      String n2 = n.f2.accept(this, "##");
+      String n2 = n.f2.accept(this, null);
       String reg_n2 = load_variable(n2, "int");
       
       String reg_n3 = symbol_table.get_register();
       emit("\n\t" + reg_n3 + " = mul i32 " + reg_n1 + ", " + reg_n2);
+
+      symbol_table.insert(reg_n3, reg_n3, "i32");
 
       return reg_n3;
    }
@@ -626,11 +642,11 @@ public class LoweringVisitor extends GJDepthFirst<String, String>{
     */
    public String visit(ArrayLookup n, String argu) throws Exception {
       /* Get array variable register */
-      String reg_n1 = n.f0.accept(this, "##");
+      String reg_n1 = n.f0.accept(this, null);
       reg_n1 = load_variable(reg_n1, "int[]"); 
 
       /* Get index register */
-      String index = n.f2.accept(this, "##");
+      String index = n.f2.accept(this, null);
       index = load_variable(index, "int");
       
       /* Get array length from first cell */
@@ -645,7 +661,7 @@ public class LoweringVisitor extends GJDepthFirst<String, String>{
       String reg_n4 = symbol_table.get_register();
       emit("\n\t" + reg_n4 + " = icmp ult i32 " + index + ", " + reg_n3);
 
-      /* Transform ult to "umt" */
+      /* Transform ult to "ugt" */
       String reg_n5 = symbol_table.get_register();
       emit("\n\t" + reg_n5 + " = xor i1 " + reg_n4 + ", 1");
 
@@ -673,6 +689,8 @@ public class LoweringVisitor extends GJDepthFirst<String, String>{
       String reg_n7 = symbol_table.get_register();
       emit("\n\t" + reg_n7 + " = getelementptr i32, i32*  " + reg_n1 + ", i32 " + reg_n6);
       
+      symbol_table.insert(reg_n7, reg_n7, "i32*");
+
       return reg_n7;
    }
   
@@ -692,6 +710,8 @@ public class LoweringVisitor extends GJDepthFirst<String, String>{
       
       String reg_n3 = symbol_table.get_register();
       emit("\n\t" + reg_n3 + " = load i32, i32* " + reg_n2);
+
+      symbol_table.insert(reg_n3, reg_n3, "i32");
 
       return reg_n3;
    }
@@ -818,19 +838,12 @@ public class LoweringVisitor extends GJDepthFirst<String, String>{
     */
    public String visit(ArrayAllocationExpression n, String argu) throws Exception {
       /* Get Expression (Register or Literal) */
-      String reg = n.f3.accept(this, "##");
+      String reg = n.f3.accept(this, null);
       String reg_n1 = load_variable(reg, "int");
-      
-      // String reg_n1 = symbol_table.get_register();
-      // if(reg.substring(0, 1).equals("%")) // register
-      //    emit("\n\t" + reg_n1 + " = load i32, i32* " + reg);
-      // else      
-      //    reg_n1 = reg;
-
       
       /* Bounds check */
       String reg_n2 = symbol_table.get_register();
-      emit("\n\t" + reg_n2 + "  = icmp slt i32 " + reg_n1 + ", 0");
+      emit("\n\t" + reg_n2 + "  = icmp slt i32 " + reg_n1 + ", 1");
 
       /* Branch if-then-else */
       String then_lbl = symbol_table.get_arr_label();
@@ -861,7 +874,8 @@ public class LoweringVisitor extends GJDepthFirst<String, String>{
       emit("\n\tstore i32 " + reg_n1 + ", i32* " + reg_n5); 
 
       /* Insert register in symbol_table */
-      symbol_table.insert(reg_n5, reg_n5, "int[]");
+      symbol_table.insert(reg_n5, reg_n5, "i32*");
+      
       return reg_n5;
    }
   
@@ -893,7 +907,7 @@ public class LoweringVisitor extends GJDepthFirst<String, String>{
       emit("\n\tstore i8** " + reg_n2 + ", i8*** " + reg_n1);
 
       /* Insert register in symbol_table */
-      symbol_table.insert(reg_n0, reg_n0, class_name);
+      symbol_table.insert(reg_n0, reg_n0, "i8*");
       return reg_n0;
    }
   
@@ -908,7 +922,9 @@ public class LoweringVisitor extends GJDepthFirst<String, String>{
 
       /* Perform not expression on value */
       String reg_n1 = symbol_table.get_register();
-      emit("\n\t" + reg_n1 + " = xor " + var + ", 1");
+      emit("\n\t" + reg_n1 + " = xor i1" + var + ", 1");
+
+      symbol_table.insert(reg_n1, reg_n1, "i1");
 
       return reg_n1;
    }

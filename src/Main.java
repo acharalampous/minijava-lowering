@@ -50,7 +50,7 @@ public class Main {
                 /* Perform Semantic Analysis */
                 CheckVisitor check_v = new CheckVisitor(symbol_table);
                 root.accept(check_v, null);
-                System.out.println("  -> Program Symanticly Checked.");
+                System.out.println("  -> Program Symanticly Checked Succesfully.");
                 
                 /* Print offsets */
                 // symbol_table.print_offsets();
@@ -62,6 +62,8 @@ public class Main {
                 output_file = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(get_output_filename(args[i])), "utf-8"));
                 LoweringVisitor lower_v = new LoweringVisitor(lst, output_file);
                 root.accept(lower_v, null);
+
+                System.err.println("  -> Program Lowering finished Succesfully.");
             }
             catch(ParseException ex){
                 System.out.println("\n\t** " + ex.getMessage());
