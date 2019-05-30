@@ -630,10 +630,10 @@ public class LoweringVisitor extends GJDepthFirst<String, String>{
     */
    public String visit(CompareExpression n, String argu) throws Exception {
       String n1 = n.f0.accept(this, null);
-      String reg_n1 = load_variable(n1, "int");
+      String reg_n1 = load_variable(n1, "i32*");
       
       String n2 = n.f2.accept(this, null);
-      String reg_n2 = load_variable(n2, "int");
+      String reg_n2 = load_variable(n2, "i32*");
       
       String reg_n3 = symbol_table.get_register();
       emit("\n\t" + reg_n3 + " = icmp slt i32 " + reg_n1 + ", " + reg_n2);
@@ -649,16 +649,15 @@ public class LoweringVisitor extends GJDepthFirst<String, String>{
     */
    public String visit(PlusExpression n, String argu) throws Exception {
       String n1 = n.f0.accept(this, null);
-      String reg_n1 = load_variable(n1, "int");
+      String reg_n1 = load_variable(n1, "i32*");
       
       String n2 = n.f2.accept(this, null);
-      String reg_n2 = load_variable(n2, "int");
+      String reg_n2 = load_variable(n2, "i32*");
       
       String reg_n3 = symbol_table.get_register();
       emit("\n\t" + reg_n3 + " = add i32 " + reg_n1 + ", " + reg_n2);
 
       symbol_table.insert(reg_n3, reg_n3, "i32");
-
       return reg_n3;
    }
   
@@ -669,10 +668,10 @@ public class LoweringVisitor extends GJDepthFirst<String, String>{
     */
    public String visit(MinusExpression n, String argu) throws Exception {
       String n1 = n.f0.accept(this, null);
-      String reg_n1 = load_variable(n1, "int");
+      String reg_n1 = load_variable(n1, "i32*");
       
       String n2 = n.f2.accept(this, null);
-      String reg_n2 = load_variable(n2, "int");
+      String reg_n2 = load_variable(n2, "i32*");
       
       String reg_n3 = symbol_table.get_register();
       emit("\n\t" + reg_n3 + " = sub i32 " + reg_n1 + ", " + reg_n2);
@@ -688,10 +687,10 @@ public class LoweringVisitor extends GJDepthFirst<String, String>{
     */
    public String visit(TimesExpression n, String argu) throws Exception {
       String n1 = n.f0.accept(this, null);
-      String reg_n1 = load_variable(n1, "int");
+      String reg_n1 = load_variable(n1, "i32*");
       
       String n2 = n.f2.accept(this, null);
-      String reg_n2 = load_variable(n2, "int");
+      String reg_n2 = load_variable(n2, "i32*");
       
       String reg_n3 = symbol_table.get_register();
       emit("\n\t" + reg_n3 + " = mul i32 " + reg_n1 + ", " + reg_n2);
