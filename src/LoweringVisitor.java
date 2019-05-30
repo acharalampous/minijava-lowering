@@ -11,6 +11,7 @@ import java.io.IOException;
 
 import syntaxtree.*;
 import visitor.GJDepthFirst;
+import java.util.*;
 
 
 /*
@@ -21,6 +22,8 @@ public class LoweringVisitor extends GJDepthFirst<String, String>{
    private LoweringST symbol_table;
    private BufferedWriter output_file;
    private String cur_class;
+
+   private Vector<NameType> method_args;
 
    /* Given a string returns true if it is a number, else false */
    public boolean isNumber(String str) { 
@@ -106,7 +109,23 @@ public class LoweringVisitor extends GJDepthFirst<String, String>{
       }
       else
          return var;
-	}
+   }
+   
+   public void load_method_arguments() throws IOException{
+      for(NameType arg : method_args){
+         String arg_name = arg.get_name();
+         String arg_type = arg.get_type();
+
+         String var_name = arg_name.substring(2); // discard "%."
+         emit("\n\t%" + var_name +" = alloca " + arg_type);
+         emit("\n\tstore " + arg_type + " " + arg_name + ", " + arg_type + "* %" + var_name);
+         emit("\n");
+
+         symbol_table.insert(var_name, "%" + var_name, arg_type + "*");
+      }
+
+      method_args = null;
+   }
 	
 
 	/**
@@ -118,7 +137,7 @@ public class LoweringVisitor extends GJDepthFirst<String, String>{
       symbol_table.print_vtables(output_file);
       symbol_table.print_ext_methods(output_file);
       n.f0.accept(this, argu);
-      //n.f1.accept(this, argu);
+      n.f1.accept(this, argu);
       return null;
    }
   
@@ -156,55 +175,45 @@ public class LoweringVisitor extends GJDepthFirst<String, String>{
       return null;
    }
   
-                     /**
-                        * f0 -> ClassDeclaration()
-                        *       | ClassExtendsDeclaration()
-                        */
-                     public String visit(TypeDeclaration n, String argu) throws Exception {
-                        return n.f0.accept(this, argu);
-                     }
+   /**
+    * f0 -> ClassDeclaration()
+    *       | ClassExtendsDeclaration()
+    */
+   public String visit(TypeDeclaration n, String argu) throws Exception {
+      return n.f0.accept(this, argu);
+   }
                   
-                     /**
-                        * f0 -> "class"
-                        * f1 -> Identifier()
-                        * f2 -> "{"
-                        * f3 -> ( VarDeclaration() )*
-                        * f4 -> ( MethodDeclaration() )*
-                        * f5 -> "}"
-                        */
-                     public String visit(ClassDeclaration n, String argu) throws Exception {
-                        String _ret=null;
-                        n.f0.accept(this, argu);
-                        n.f1.accept(this, argu);
-                        n.f2.accept(this, argu);
-                        n.f3.accept(this, argu);
-                        n.f4.accept(this, argu);
-                        n.f5.accept(this, argu);
-                        return _ret;
-                     }
+   /**
+    * f0 -> "class"
+    * f1 -> Identifier()
+    * f2 -> "{"
+    * f3 -> ( VarDeclaration() )*
+    * f4 -> ( MethodDeclaration() )*
+    * f5 -> "}"
+    */
+   public String visit(ClassDeclaration n, String argu) throws Exception {
+      cur_class = n.f1.accept(this, argu);
+      n.f4.accept(this, argu);
+      cur_class = null;
+      return null;
+   }
                   
-                     /**
-                        * f0 -> "class"
-                        * f1 -> Identifier()
-                        * f2 -> "extends"
-                        * f3 -> Identifier()
-                        * f4 -> "{"
-                        * f5 -> ( VarDeclaration() )*
-                        * f6 -> ( MethodDeclaration() )*
-                        * f7 -> "}"
-                        */
-                     public String visit(ClassExtendsDeclaration n, String argu) throws Exception {
-                        String _ret=null;
-                        n.f0.accept(this, argu);
-                        n.f1.accept(this, argu);
-                        n.f2.accept(this, argu);
-                        n.f3.accept(this, argu);
-                        n.f4.accept(this, argu);
-                        n.f5.accept(this, argu);
-                        n.f6.accept(this, argu);
-                        n.f7.accept(this, argu);
-                        return _ret;
-                     }
+   /**
+    * f0 -> "class"
+    * f1 -> Identifier()
+    * f2 -> "extends"
+    * f3 -> Identifier()
+    * f4 -> "{"
+    * f5 -> ( VarDeclaration() )*
+    * f6 -> ( MethodDeclaration() )*
+    * f7 -> "}"
+    */
+   public String visit(ClassExtendsDeclaration n, String argu) throws Exception {
+      cur_class = n.f1.accept(this, argu);
+      n.f6.accept(this, argu);
+      cur_class = null;
+      return null;
+   }
   
    /**
     * f0 -> Type()
@@ -223,78 +232,95 @@ public class LoweringVisitor extends GJDepthFirst<String, String>{
       return null;
    }
   
-                  /**
-                     * f0 -> "public"
-                     * f1 -> Type()
-                     * f2 -> Identifier()
-                     * f3 -> "("
-                     * f4 -> ( FormalParameterList() )?
-                     * f5 -> ")"
-                     * f6 -> "{"
-                     * f7 -> ( VarDeclaration() )*
-                     * f8 -> ( Statement() )*
-                     * f9 -> "return"
-                     * f10 -> Expression()
-                     * f11 -> ";"
-                     * f12 -> "}"
-                     */
-                  public String visit(MethodDeclaration n, String argu) throws Exception {
-                     String _ret=null;
-                     n.f0.accept(this, argu);
-                     n.f1.accept(this, argu);
-                     n.f2.accept(this, argu);
-                     n.f3.accept(this, argu);
-                     n.f4.accept(this, argu);
-                     n.f5.accept(this, argu);
-                     n.f6.accept(this, argu);
-                     n.f7.accept(this, argu);
-                     n.f8.accept(this, argu);
-                     n.f9.accept(this, argu);
-                     n.f10.accept(this, argu);
-                     n.f11.accept(this, argu);
-                     n.f12.accept(this, argu);
-                     return _ret;
-                  }
+   /**
+    * f0 -> "public"
+    * f1 -> Type()
+    * f2 -> Identifier()
+    * f3 -> "("
+    * f4 -> ( FormalParameterList() )?
+    * f5 -> ")"
+    * f6 -> "{"
+    *  f7 -> ( VarDeclaration() )*
+    *  f8 -> ( Statement() )*
+    * f9 -> "return"
+    * f10 -> Expression()
+    * f11 -> ";"
+    * f12 -> "}"
+    */
+   public String visit(MethodDeclaration n, String argu) throws Exception {
+      String ret_type = n.f1.accept(this, argu);
+      ret_type = symbol_table.get_llvm_type(ret_type);
+
+      String method_name = n.f2.accept(this, argu);
+
+      /* Print method's definition */
+      emit("\n\ndefine " + ret_type + " @" + cur_class + "." + method_name + "(i8* %this");
+      
+      /* Print method's arguments */
+      method_args = new Vector<>();
+      n.f4.accept(this, argu);
+      emit("){");
+      symbol_table.enter_scope();
+      load_method_arguments();
+
+      /* Method Body */
+      n.f7.accept(this, argu);
+      n.f8.accept(this, argu);
+      
+      /* Print return statement */
+      String ret_val = n.f10.accept(this, argu);
+      ret_val = load_variable(ret_val, ret_type + "*");
+      emit("\n\n\tret " + ret_type + " " + ret_val);
+      emit("\n}");
+
+      symbol_table.exit_scope();
+
+      return null;
+   }
   
-                  /**
-                     * f0 -> FormalParameter()
-                     * f1 -> FormalParameterTail()
-                     */
-                  public String visit(FormalParameterList n, String argu) throws Exception {
-                     String _ret=null;
-                     n.f0.accept(this, argu);
-                     n.f1.accept(this, argu);
-                     return _ret;
-                  }
-               
-                  /**
-                     * f0 -> Type()
-                     * f1 -> Identifier()
-                     */
-                  public String visit(FormalParameter n, String argu) throws Exception {
-                     String _ret=null;
-                     n.f0.accept(this, argu);
-                     n.f1.accept(this, argu);
-                     return _ret;
-                  }
-               
-                  /**
-                     * f0 -> ( FormalParameterTerm() )*
-                     */
-                  public String visit(FormalParameterTail n, String argu) throws Exception {
-                     return n.f0.accept(this, argu);
-                  }
-               
-                  /**
-                     * f0 -> ","
-                     * f1 -> FormalParameter()
-                     */
-                  public String visit(FormalParameterTerm n, String argu) throws Exception {
-                     String _ret=null;
-                     n.f0.accept(this, argu);
-                     n.f1.accept(this, argu);
-                     return _ret;
-                  }
+   /**
+    * f0 -> FormalParameter()
+    * f1 -> FormalParameterTail()
+    */
+   public String visit(FormalParameterList n, String argu) throws Exception {
+      n.f0.accept(this, argu);
+      n.f1.accept(this, argu);
+      return null;
+   }
+
+   /**
+    * f0 -> Type()
+    * f1 -> Identifier()
+    */
+   public String visit(FormalParameter n, String argu) throws Exception {
+      /* Get type of argument */
+      String type = n.f0.accept(this, argu);
+      type = symbol_table.get_llvm_type(type);
+
+      /* Get name of argument */
+      String arg_name = n.f1.accept(this, argu);
+
+      method_args.add(new NameType("%." + arg_name , type));
+
+      emit(", " + type + " %." + arg_name);
+      return null;
+   }
+
+   /**
+      * f0 -> ( FormalParameterTerm() )*
+      */
+   public String visit(FormalParameterTail n, String argu) throws Exception {
+      return n.f0.accept(this, argu);
+   }
+
+   /**
+      * f0 -> ","
+      * f1 -> FormalParameter()
+      */
+   public String visit(FormalParameterTerm n, String argu) throws Exception {
+      n.f1.accept(this, argu);
+      return null;
+   }
   
    /**
     * f0 -> ArrayType()
@@ -540,65 +566,63 @@ public class LoweringVisitor extends GJDepthFirst<String, String>{
       return null;
    }
             
-               /**
-                  * f0 -> AndExpression()
-                  *       | CompareExpression()
-                  *       | PlusExpression()
-                  *       | MinusExpression()
-                  *       | TimesExpression()
-                  *       | ArrayLookup()
-                  *       | ArrayLength()
-                  *       | MessageSend()
-                  *       | Clause()
-                  */
-               public String visit(Expression n, String argu) throws Exception {
-                  return n.f0.accept(this, argu);
-               }
+   /**
+    * f0 -> AndExpression()
+    *       | CompareExpression()
+    *       | PlusExpression()
+    *       | MinusExpression()
+    *       | TimesExpression()
+    *       | ArrayLookup()
+    *       | ArrayLength()
+    *       | MessageSend()
+    *       | Clause()
+    */
+   public String visit(Expression n, String argu) throws Exception {
+      return n.f0.accept(this, argu);
+   }
   
-               /**
-                * f0 -> Clause()
-               * f1 -> "&&"
-               * f2 -> Clause()
-               */
-               public String visit(AndExpression n, String argu) throws Exception {
-                  /* Generate and clause labels */
-                  String andlbl1 = symbol_table.get_and_label();
-                  String andlbl2 = symbol_table.get_and_label();
-                  String andlbl3 = symbol_table.get_and_label();
-                  String andlbl4 = symbol_table.get_and_label();
-                  
-                  /* First Clause */
-                  String n1 = n.f0.accept(this, argu);
-                  String reg_n1 = load_variable(n1, "i1*");
+   /**
+    * f0 -> Clause()
+    * f1 -> "&&"
+    * f2 -> Clause()
+    */
+   public String visit(AndExpression n, String argu) throws Exception {
+      /* Generate and clause labels */
+      String andlbl1 = symbol_table.get_and_label();
+      String andlbl2 = symbol_table.get_and_label();
+      String andlbl3 = symbol_table.get_and_label();
+      String andlbl4 = symbol_table.get_and_label();
+      
+      /* First Clause */
+      String n1 = n.f0.accept(this, argu);
+      String reg_n1 = load_variable(n1, "i1*");
 
-                  emit("\n\tbr label %" + andlbl1);
-                  emit("\n\n");
-                  emit(andlbl1 + ":");
-                  emit("\n\tbr i1 " + reg_n1 + ", label %" + andlbl2 + ", label %" + andlbl4);
+      emit("\n\tbr label %" + andlbl1);
+      emit("\n\n");
+      emit(andlbl1 + ":");
+      emit("\n\tbr i1 " + reg_n1 + ", label %" + andlbl2 + ", label %" + andlbl4);
 
-                  emit("\n\n");
-                  emit(andlbl2 + ":");
+      emit("\n\n");
+      emit(andlbl2 + ":");
 
-                  /* Second Clause */
-                  String n2 = n.f2.accept(this, argu);
-                  String reg_n2 = load_variable(n2, "i1*");
-                  emit("\n\tbr label %" + andlbl3);
-                  emit("\n\n");
-                  emit(andlbl3 + ":");
-                  emit("\n");
-                  emit("\n\tbr label %" + andlbl4);
-                  emit("\n\n");
-                  emit(andlbl4 + ":");
+      /* Second Clause */
+      String n2 = n.f2.accept(this, argu);
+      String reg_n2 = load_variable(n2, "i1*");
+      emit("\n\tbr label %" + andlbl3);
+      emit("\n\n");
+      emit(andlbl3 + ":");
+      emit("\n");
+      emit("\n\tbr label %" + andlbl4);
+      emit("\n\n");
+      emit(andlbl4 + ":");
 
+      String reg_n3 = symbol_table.get_register();
+      emit("\n\t" + reg_n3 + " = phi i1 [ 0, %" + andlbl1 + " ] , [ " + reg_n2 + ", %" + andlbl3 + " ]");
 
-                  String reg_n3 = symbol_table.get_register();
-                  emit("\n\t" + reg_n3 + " = phi i1 [ 0, %" + andlbl1 + " ] , [ " + reg_n2 + ", %" + andlbl3 + " ]");
-
-                  symbol_table.insert(reg_n3, reg_n3, "i1");
-                  
-
-                  return reg_n3;
-               }
+      symbol_table.insert(reg_n3, reg_n3, "i1");
+      
+      return reg_n3;
+   }
   
    /**
     * f0 -> PrimaryExpression()
