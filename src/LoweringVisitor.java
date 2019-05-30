@@ -56,11 +56,14 @@ public class LoweringVisitor extends GJDepthFirst<String, String>{
          var_type = symbol_table.lookup(var); // get type of var
       }
       else{ // identifier, must load its register
-         tmp_reg1 = symbol_table.get_var_reg(var); // get local register of identifier
+         tmp_reg1 = symbol_table.get_var_reg(var); // get local register of identifier         
+         if(tmp_reg1 == null){ // object variable
+            tmp_reg1 = load_variable(var);
+            var_type = symbol_table.lookup(tmp_reg1);
+			}
+			else
+				var_type = symbol_table.lookup(var); // get its type 
          
-         /* A CHECK MUST BE INSERTED HERE FOR OBJECT FIELDS */
-         
-         var_type = symbol_table.lookup(var); // get its type         
       }
 
 
@@ -83,34 +86,58 @@ public class LoweringVisitor extends GJDepthFirst<String, String>{
 
 	/* Prepares a register for the var given. Var can be a local variable, class field or literal */
 	public String load_variable(String var, String type) throws IOException{
-      String tmp_reg;
-      String var_type;
-      if(isNumber(var)) // Integer/Boolean Literal
+		String tmp_reg;
+		String var_type;
+		if(isNumber(var)) // Integer/Boolean Literal
+				return var;
+		else if(var.substring(0, 1).equals("%")){ // local register
+			tmp_reg = var;
+			var_type = symbol_table.lookup(var); // get type of var
+		}
+		else{ // identifier, must load its register
+			tmp_reg = symbol_table.get_var_reg(var); // get local register of identifier
+			
+			if(tmp_reg == null){ // object variable
+            tmp_reg = load_variable(var);
+            var_type = symbol_table.lookup(tmp_reg);
+			}
+			else
+				var_type = symbol_table.lookup(var); // get its type         
+		}
+         
+         
+		String reg;
+		if(type.equals(var_type)){ // its value must be loaded
+			reg = symbol_table.get_register();
+			var_type = var_type.substring(0, var_type.length() - 1);
+			emit("\n\t" + reg + " = load " + var_type + ", " + type + " " + tmp_reg);
+			return reg;
+		}
+		else
 			return var;
-      else if(var.substring(0, 1).equals("%")){ // local register
-         tmp_reg = var;
-         var_type = symbol_table.lookup(var); // get type of var
-      }
-      else{ // identifier, must load its register
-         tmp_reg = symbol_table.get_var_reg(var); // get local register of identifier
-         
-         /* A CHECK MUST BE INSERTED HERE FOR OBJECT FIELDS */
-         
-         var_type = symbol_table.lookup(var); // get its type         
-      }
-         
-         
-      String reg;
-      if(type.equals(var_type)){ // its value must be loaded
-         reg = symbol_table.get_register();
-         var_type = var_type.substring(0, var_type.length() - 1);
-         emit("\n\t" + reg + " = load " + var_type + ", " + type + " " + tmp_reg);
-         return reg;
-      }
-      else
-         return var;
+   }
+
+   /* Load varibale from object */
+   public String load_variable(String var) throws IOException{
+      /* Get offset and type */
+      int var_offset = symbol_table.get_var_offset(cur_class, var);
+      String var_type = symbol_table.get_var_type(cur_class, var);
+      var_type = symbol_table.get_llvm_type(var_type);
+      String tmp_reg1 = symbol_table.get_register();
+
+      emit("\n\t" + tmp_reg1 + " = getelementptr i8, i8* %this, " + var_type + " " + var_offset);
+
+      String tmp_reg = symbol_table.get_register();
+      emit("\n\t" + tmp_reg + " = bitcast i8* " + tmp_reg1 + " to " + var_type + "*");
+
+      var_type = var_type + "*";
+
+      symbol_table.insert(tmp_reg, tmp_reg, var_type);
+
+      return tmp_reg;
    }
    
+
    public void load_method_arguments() throws IOException{
       for(NameType arg : method_args){
          String arg_name = arg.get_name();
@@ -386,7 +413,13 @@ public class LoweringVisitor extends GJDepthFirst<String, String>{
       /* Get variable, it's register and type */
       String id = n.f0.accept(this, null);
       String reg = symbol_table.get_var_reg(id);
-      String type = symbol_table.lookup(id);
+      String type;
+      if(reg == null){ // object variable
+         reg = load_variable(id);
+         type = symbol_table.lookup(reg);
+      }
+      else // local variable
+         type = symbol_table.lookup(id);
 
 
       /* Load value to be stored */
