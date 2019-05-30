@@ -106,47 +106,6 @@ public class LoweringVisitor extends GJDepthFirst<String, String>{
       }
       else
          return var;
-      
-      // String tmp_reg;
-		// if(isNumber(var)) // integer literal
-		// 	return var;
-		// else if(var.substring(0, 1).equals("%")){ // local register
-		// 	tmp_reg = var;	
-		// }
-		// else{ // identifier
-		// 	tmp_reg = symbol_table.get_var_reg(var);
-		// 	if(tmp_reg == null){ // object variable, must fetch it
-		// 		/* Get variable name and its offset to fetch it from memory */
-		// 		int var_offset = symbol_table.get_var_offset(cur_class, var);
-				
-		// 		/* Get ptr to variable and store it to register */
-		// 		String tmp_reg1 = symbol_table.get_register();
-		// 		emit("\n\t" + tmp_reg1 + " = getelementpr i8, i8* %this, i32 " + var_offset);
-		// 		String l_type = symbol_table.get_llvm_type(type);
-				
-		// 		/* Bitcast to ptr type of variable */
-		// 		tmp_reg = symbol_table.get_register();
-		// 		emit("\n\t" + tmp_reg + " = bitcast i8* " + tmp_reg1 + " to " + l_type + "*");	
-		// 	}
-		// }
-
-      // String reg;
-		// /* Load variable's value to register and return it */
-		// if(type.equals("int[]")) 
-      // // emit("\n\t" + reg + " = load i32*, i32** " + tmp_reg);
-      //    reg = tmp_reg;
-      // else{
-      //    reg = symbol_table.get_register();
-
-      //    if(type.equals("int")) 
-		//    	emit("\n\t" + reg + " = load i32, i32* " + tmp_reg);
-      //    else if(type.equals("boolean")) 
-		//    	emit("\n\t" + reg + " = load i8, i8* " + tmp_reg);
-      //    else 
-		//    	emit("\n\t" + reg + " = load i8*, i8** " + tmp_reg);
-      // }
-         
-		// return reg;
 	}
 	
 
@@ -158,10 +117,9 @@ public class LoweringVisitor extends GJDepthFirst<String, String>{
    public String visit(Goal n, String argu) throws Exception {
       symbol_table.print_vtables(output_file);
       symbol_table.print_ext_methods(output_file);
-      String _ret = null;
       n.f0.accept(this, argu);
       //n.f1.accept(this, argu);
-      return _ret;
+      return null;
    }
   
    /**
@@ -187,12 +145,13 @@ public class LoweringVisitor extends GJDepthFirst<String, String>{
    public String visit(MainClass n, String argu) throws Exception {
       emit("\n\n");
       emit("define i32 @main(){");
+      
       symbol_table.enter_scope();
       n.f14.accept(this, argu);
       n.f15.accept(this, argu);
-      n.f16.accept(this, argu);
-      n.f17.accept(this, argu);
+
       emit("\n\n\tret i32 0\n}");
+      
       symbol_table.exit_scope();
       return null;
    }
@@ -403,7 +362,6 @@ public class LoweringVisitor extends GJDepthFirst<String, String>{
       String reg = symbol_table.get_var_reg(id);
       String type = symbol_table.lookup(id);
 
-      // String l_type = symbol_table.get_llvm_type(type);
 
       /* Load value to be stored */
       String val = n.f2.accept(this, argu);
@@ -429,11 +387,11 @@ public class LoweringVisitor extends GJDepthFirst<String, String>{
    public String visit(ArrayAssignmentStatement n, String argu) throws Exception {
       /* Get array variable register */
       String reg_n1 = n.f0.accept(this, null);
-      reg_n1 = load_variable(reg_n1, "int[]"); 
+      reg_n1 = load_variable(reg_n1, "i32**"); 
 
       /* Get index register */
       String index = n.f2.accept(this, null);
-      index = load_variable(index, "int");
+      index = load_variable(index, "i32*");
       
       /* Get array length from first cell */
       String reg_n2 = symbol_table.get_register();
@@ -476,90 +434,90 @@ public class LoweringVisitor extends GJDepthFirst<String, String>{
       emit("\n\t" + reg_n7 + " = getelementptr i32, i32*  " + reg_n1 + ", i32 " + reg_n6);
       
       String reg_n8 = n.f5.accept(this, argu);
-      reg_n8 = load_variable(reg_n8, "int");
+      reg_n8 = load_variable(reg_n8, "i32*");
 
       emit("\n\tstore i32 " + reg_n8 + ", i32* " + reg_n7);
 
       return null;
    }
   
-   /**
-    * f0 -> "if"
-    * f1 -> "("
-    * f2 -> Expression()
-    * f3 -> ")"
-    * f4 -> Statement()
-    * f5 -> "else"
-    * f6 -> Statement()
-   */
-   public String visit(IfStatement n, String argu) throws Exception {
-      /* Generate if labels for then_else_continue */
-      String then_lbl = symbol_table.get_loop_label();
-      String else_lbl = symbol_table.get_loop_label();
-      String con_lbl = symbol_table.get_loop_label();
+                  /**
+                   * f0 -> "if"
+                  * f1 -> "("
+                  * f2 -> Expression()
+                  * f3 -> ")"
+                  * f4 -> Statement()
+                  * f5 -> "else"
+                  * f6 -> Statement()
+                  */
+                  public String visit(IfStatement n, String argu) throws Exception {
+                     /* Generate if labels for then_else_continue */
+                     String then_lbl = symbol_table.get_loop_label();
+                     String else_lbl = symbol_table.get_loop_label();
+                     String con_lbl = symbol_table.get_loop_label();
 
-      /* Condition code */
-      String reg = n.f2.accept(this, argu);
+                     /* Condition code */
+                     String reg = n.f2.accept(this, argu);
 
-      /* Print condition check */
-      emit("\n\tbr i1 " + reg + ", label %" + then_lbl + ", label %" + else_lbl);
-      emit("\n\n");
-      emit(then_lbl + ":");
-      
-      /* Then code */
-      n.f4.accept(this, argu);      
-      
-      emit("\n\tbr label %" + con_lbl);
-      emit("\n\n");
-      emit(else_lbl + ":");
-      
-      /* Else code */
-      n.f4.accept(this, argu);
-      emit("\n\tbr label %" + con_lbl);
-      emit("\n\n");
+                     /* Print condition check */
+                     emit("\n\tbr i1 " + reg + ", label %" + then_lbl + ", label %" + else_lbl);
+                     emit("\n\n");
+                     emit(then_lbl + ":");
+                     
+                     /* Then code */
+                     n.f4.accept(this, argu);      
+                     
+                     emit("\n\tbr label %" + con_lbl);
+                     emit("\n\n");
+                     emit(else_lbl + ":");
+                     
+                     /* Else code */
+                     n.f4.accept(this, argu);
+                     emit("\n\tbr label %" + con_lbl);
+                     emit("\n\n");
 
-      /* Continue after if */
-      emit(con_lbl + ":");
+                     /* Continue after if */
+                     emit(con_lbl + ":");
 
-      return null;
-   }
-  
-   /**
-    * f0 -> "while"
-    * f1 -> "("
-    * f2 -> Expression()
-    * f3 -> ")"
-    * f4 -> Statement()
-    */
-   public String visit(WhileStatement n, String argu) throws Exception {
-      /* Generate loop labels for loop_check-loop_body-after_loop */
-      String loop_lbl = symbol_table.get_loop_label();
-      String then_lbl = symbol_table.get_loop_label();
-      String else_lbl = symbol_table.get_loop_label();
+                     return null;
+                  }
+               
+                  /**
+                   * f0 -> "while"
+                  * f1 -> "("
+                  * f2 -> Expression()
+                  * f3 -> ")"
+                  * f4 -> Statement()
+                  */
+                  public String visit(WhileStatement n, String argu) throws Exception {
+                     /* Generate loop labels for loop_check-loop_body-after_loop */
+                     String loop_lbl = symbol_table.get_loop_label();
+                     String then_lbl = symbol_table.get_loop_label();
+                     String else_lbl = symbol_table.get_loop_label();
 
-      /* Print loob start */
-      emit("\n\tbr label %" + loop_lbl);
-      emit("\n\n");
-      emit(loop_lbl + ":");
+                     /* Print loob start */
+                     emit("\n\tbr label %" + loop_lbl);
+                     emit("\n\n");
+                     emit(loop_lbl + ":");
 
-      /* Condition code */
-      String reg = n.f2.accept(this, argu);
-      emit("\n\tbr i1 " + reg + ", label %" + then_lbl + ", label %" + else_lbl);
-      
-      /* Loop Body code */
-      emit("\n\n");
-      emit(then_lbl + ":");
-      n.f4.accept(this, argu);
-      
-      /* Loop Condition recheck code */ 
-      emit("\n\tbr label %" + loop_lbl);
+                     /* Condition code */
+                     String reg = n.f2.accept(this, argu);
+                     emit("\n\tbr i1 " + reg + ", label %" + then_lbl + ", label %" + else_lbl);
+                     
+                     /* Loop Body code */
+                     emit("\n\n");
+                     emit(then_lbl + ":");
+                     n.f4.accept(this, argu);
+                     
+                     /* Loop Condition recheck code */ 
+                     emit("\n\tbr label %" + loop_lbl);
 
-      /* Continue after loop */
-      emit("\n\n");
-      emit(else_lbl + ":");
+                     /* Continue after loop */
+                     emit("\n\n");
+                     emit(else_lbl + ":");
 
-      return null;
-   }
+                     return null;
+                  }
   
    /**
       * f0 -> "System.out.println"
@@ -709,11 +667,11 @@ public class LoweringVisitor extends GJDepthFirst<String, String>{
    public String visit(ArrayLookup n, String argu) throws Exception {
       /* Get array variable register */
       String reg_n1 = n.f0.accept(this, null);
-      reg_n1 = load_variable(reg_n1, "int[]"); 
+      reg_n1 = load_variable(reg_n1, "i32**"); 
 
       /* Get index register */
       String index = n.f2.accept(this, null);
-      index = load_variable(index, "int");
+      index = load_variable(index, "i32*");
       
       /* Get array length from first cell */
       String reg_n2 = symbol_table.get_register();
@@ -767,8 +725,8 @@ public class LoweringVisitor extends GJDepthFirst<String, String>{
     */
    public String visit(ArrayLength n, String argu) throws Exception {
       /* Get array variable register */
-      String n1 = n.f0.accept(this, "##");
-      String reg_n1 = load_variable(n1, "int[]");
+      String n1 = n.f0.accept(this, null);
+      String reg_n1 = load_variable(n1, "i32**");
 
       /* Get array length from first cell */
       String reg_n2 = symbol_table.get_register();
@@ -877,14 +835,6 @@ public class LoweringVisitor extends GJDepthFirst<String, String>{
     * f0 -> <IDENTIFIER>
     */
    public String visit(Identifier n, String argu) throws Exception {
-      // if(argu != null && argu.equals("##")){ // if var was given, get it's register
-      //    String ret = symbol_table.get_var_reg(n.f0.tokenImage);
-      //    if(ret != null) // register found
-      //       return ret;
-      //    else // not found, return identifier with a sign in order to be used differently
-      //       return "!!" + n.f0.tokenImage;
-      // }
-
       return n.f0.tokenImage;
    }
 
@@ -984,7 +934,7 @@ public class LoweringVisitor extends GJDepthFirst<String, String>{
    public String visit(NotExpression n, String argu) throws Exception {
       /* Get Register/Literal to perform not ~ */
       String var = n.f1.accept(this, argu);
-      var = load_variable(var, "boolean");
+      var = load_variable(var, "i1*");
 
       /* Perform not expression on value */
       String reg_n1 = symbol_table.get_register();
