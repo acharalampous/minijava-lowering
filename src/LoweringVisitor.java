@@ -24,6 +24,7 @@ public class LoweringVisitor extends GJDepthFirst<String, String>{
    private String cur_class;
 
    private Vector<NameType> method_args;
+   private Vector<String> meth_args;
 
    /* Given a string returns true if it is a number, else false */
    public boolean isNumber(String str) { 
@@ -827,7 +828,7 @@ public class LoweringVisitor extends GJDepthFirst<String, String>{
                   * f5 -> ")"
                   */
                public String visit(MessageSend n, String argu) throws Exception {
-                  /* Get variable, it's register and type */
+                  /* Get variable, its register and type */
                   String id = n.f0.accept(this, null);
                   String reg_n1 = load_variable(id, "i8**");
 
@@ -855,16 +856,31 @@ public class LoweringVisitor extends GJDepthFirst<String, String>{
                   String reg_n6 = symbol_table.get_register();
                   emit("\n\t" + reg_n6 + " = bitcast i8* " + reg_n5 + " to " + ret_type + " (i8*");
 
+                  meth_args = new Vector<>();
                   for(int i = 1; i < method_types.size(); i++){
                      String arg_type = symbol_table.get_llvm_type(method_types.elementAt(i).get_type());
                      emit(", " + arg_type);
+
+                     meth_args.add(arg_type);
                   }
                   
                   emit(")*");
 
+                  method_args = new Vector<>();
                   n.f4.accept(this, argu);
 
-                  return null;
+                  String reg_n7 = symbol_table.get_register();
+                  emit("\n\t" + reg_n7 + " = call " + ret_type + " " + reg_n6 + "(i8* " + reg_n1);
+                  for(int i = 0; i < method_args.size(); i++){
+                     NameType argument = method_args.elementAt(i);
+                     String arg_reg = argument.get_name();
+                     String arg_type = argument.get_type();
+
+                     emit(", " + arg_type + " " + arg_reg);
+                  }
+
+                  emit(")");
+                  return reg_n7;
                }
             
                /**
@@ -872,10 +888,15 @@ public class LoweringVisitor extends GJDepthFirst<String, String>{
                   * f1 -> ExpressionTail()
                   */
                public String visit(ExpressionList n, String argu) throws Exception {
-                  String _ret=null;
-                  n.f0.accept(this, argu);
+                  String arg = n.f0.accept(this, argu);
+                  String type = meth_args.remove(0);
+                  String arg_reg = load_variable(arg, type + "*");
+
+                  method_args.add(new NameType(arg_reg, type));
+
                   n.f1.accept(this, argu);
-                  return _ret;
+                  
+                  return null;
                }
             
                /**
@@ -889,9 +910,13 @@ public class LoweringVisitor extends GJDepthFirst<String, String>{
                   * f0 -> ","
                   * f1 -> Expression()
                   */
-               public String visit(ExpressionTerm n, String argu) throws Exception {
-                  n.f0.accept(this, argu);
-                  n.f1.accept(this, argu);
+               public String visit(ExpressionTerm n, String argu) throws Exception {                  
+                  String arg = n.f1.accept(this, argu);
+                  String type = meth_args.remove(0);
+                  String arg_reg = load_variable(arg, type + "*");
+
+                  method_args.add(new NameType(arg_reg, type));
+
                   return null;
                }
   
