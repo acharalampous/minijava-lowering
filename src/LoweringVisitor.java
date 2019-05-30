@@ -441,83 +441,86 @@ public class LoweringVisitor extends GJDepthFirst<String, String>{
       return null;
    }
   
-                  /**
-                   * f0 -> "if"
-                  * f1 -> "("
-                  * f2 -> Expression()
-                  * f3 -> ")"
-                  * f4 -> Statement()
-                  * f5 -> "else"
-                  * f6 -> Statement()
-                  */
-                  public String visit(IfStatement n, String argu) throws Exception {
-                     /* Generate if labels for then_else_continue */
-                     String then_lbl = symbol_table.get_loop_label();
-                     String else_lbl = symbol_table.get_loop_label();
-                     String con_lbl = symbol_table.get_loop_label();
+   /**
+    * f0 -> "if"
+    * f1 -> "("
+    * f2 -> Expression()
+    * f3 -> ")"
+    * f4 -> Statement()
+    * f5 -> "else"
+    * f6 -> Statement()
+    */
+   public String visit(IfStatement n, String argu) throws Exception {
+      /* Generate if labels for then_else_continue */
+      String then_lbl = symbol_table.get_if_label();
+      String else_lbl = symbol_table.get_if_label();
+      String con_lbl = symbol_table.get_if_label();
 
-                     /* Condition code */
-                     String reg = n.f2.accept(this, argu);
+      /* Condition code */
+      String reg = n.f2.accept(this, argu);
+      reg = load_variable(reg, "i1*"); 
 
-                     /* Print condition check */
-                     emit("\n\tbr i1 " + reg + ", label %" + then_lbl + ", label %" + else_lbl);
-                     emit("\n\n");
-                     emit(then_lbl + ":");
-                     
-                     /* Then code */
-                     n.f4.accept(this, argu);      
-                     
-                     emit("\n\tbr label %" + con_lbl);
-                     emit("\n\n");
-                     emit(else_lbl + ":");
-                     
-                     /* Else code */
-                     n.f4.accept(this, argu);
-                     emit("\n\tbr label %" + con_lbl);
-                     emit("\n\n");
 
-                     /* Continue after if */
-                     emit(con_lbl + ":");
+      /* Print condition check */
+      emit("\n\tbr i1 " + reg + ", label %" + then_lbl + ", label %" + else_lbl);
+      emit("\n\n");
+      emit(then_lbl + ":");
+      
+      /* Then code */
+      n.f4.accept(this, argu);      
+      
+      emit("\n\tbr label %" + con_lbl);
+      emit("\n\n");
+      emit(else_lbl + ":");
+      
+      /* Else code */
+      n.f6.accept(this, argu);
+      emit("\n\tbr label %" + con_lbl);
+      emit("\n\n");
 
-                     return null;
-                  }
+      /* Continue after if */
+      emit(con_lbl + ":");
+
+      return null;
+   }
                
-                  /**
-                   * f0 -> "while"
-                  * f1 -> "("
-                  * f2 -> Expression()
-                  * f3 -> ")"
-                  * f4 -> Statement()
-                  */
-                  public String visit(WhileStatement n, String argu) throws Exception {
-                     /* Generate loop labels for loop_check-loop_body-after_loop */
-                     String loop_lbl = symbol_table.get_loop_label();
-                     String then_lbl = symbol_table.get_loop_label();
-                     String else_lbl = symbol_table.get_loop_label();
+   /**
+    * f0 -> "while"
+    * f1 -> "("
+    * f2 -> Expression()
+    * f3 -> ")"
+    * f4 -> Statement()
+    */
+   public String visit(WhileStatement n, String argu) throws Exception {
+      /* Generate loop labels for loop_check-loop_body-after_loop */
+      String cond_lbl = symbol_table.get_loop_label();
+      String then_lbl = symbol_table.get_loop_label();
+      String out_lbl = symbol_table.get_loop_label();
 
-                     /* Print loob start */
-                     emit("\n\tbr label %" + loop_lbl);
-                     emit("\n\n");
-                     emit(loop_lbl + ":");
+      /* Print loob start */
+      emit("\n\tbr label %" + cond_lbl);
+      emit("\n\n");
+      emit(cond_lbl + ":");
 
-                     /* Condition code */
-                     String reg = n.f2.accept(this, argu);
-                     emit("\n\tbr i1 " + reg + ", label %" + then_lbl + ", label %" + else_lbl);
-                     
-                     /* Loop Body code */
-                     emit("\n\n");
-                     emit(then_lbl + ":");
-                     n.f4.accept(this, argu);
-                     
-                     /* Loop Condition recheck code */ 
-                     emit("\n\tbr label %" + loop_lbl);
+      /* Condition code */
+      String reg = n.f2.accept(this, argu);
+      reg = load_variable(reg, "i1*");
+      emit("\n\tbr i1 " + reg + ", label %" + then_lbl + ", label %" + out_lbl);
+      
+      /* Loop Body code */
+      emit("\n\n");
+      emit(then_lbl + ":");
+      n.f4.accept(this, argu);
+      
+      /* Loop Condition recheck code */ 
+      emit("\n\tbr label %" + cond_lbl);
 
-                     /* Continue after loop */
-                     emit("\n\n");
-                     emit(else_lbl + ":");
+      /* Continue after loop */
+      emit("\n\n");
+      emit(out_lbl + ":");
 
-                     return null;
-                  }
+      return null;
+   }
   
    /**
       * f0 -> "System.out.println"
