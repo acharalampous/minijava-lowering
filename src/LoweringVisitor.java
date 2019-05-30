@@ -561,27 +561,43 @@ public class LoweringVisitor extends GJDepthFirst<String, String>{
                * f2 -> Clause()
                */
                public String visit(AndExpression n, String argu) throws Exception {
-                  // String n1 = n.f0.accept(this, argu);
-                  // String reg_n1 = load_variable(n1, "boolean");
+                  /* Generate and clause labels */
+                  String andlbl1 = symbol_table.get_and_label();
+                  String andlbl2 = symbol_table.get_and_label();
+                  String andlbl3 = symbol_table.get_and_label();
+                  String andlbl4 = symbol_table.get_and_label();
+                  
+                  /* First Clause */
+                  String n1 = n.f0.accept(this, argu);
+                  String reg_n1 = load_variable(n1, "i1*");
 
-                  // /* Generate and clause labels */
-                  // String andlbl1 = symbol_table.get_and_label();
-                  // String andlbl2 = symbol_table.get_and_label();
-                  // String andlbl3 = symbol_table.get_and_label();
-                  // String andlbl4 = symbol_table.get_and_label();
+                  emit("\n\tbr label %" + andlbl1);
+                  emit("\n\n");
+                  emit(andlbl1 + ":");
+                  emit("\n\tbr i1 " + reg_n1 + ", label %" + andlbl2 + ", label %" + andlbl4);
 
-                  // emit("\n\tbr label %" + andlbl1);
-                  // emit("\n\n");
-                  // emit(andlbl1 + ":");
-                  // emit("\n\tbr i1 " + reg_n1 + ", label %" + andlbl2 + ", label %" + andlbl4);
+                  emit("\n\n");
+                  emit(andlbl2 + ":");
 
-                  // emit("\n\n");
-                  // emit(andlbl2 + ":");
+                  /* Second Clause */
+                  String n2 = n.f2.accept(this, argu);
+                  String reg_n2 = load_variable(n2, "i1*");
+                  emit("\n\tbr label %" + andlbl3);
+                  emit("\n\n");
+                  emit(andlbl3 + ":");
+                  emit("\n");
+                  emit("\n\tbr label %" + andlbl4);
+                  emit("\n\n");
+                  emit(andlbl4 + ":");
 
 
+                  String reg_n3 = symbol_table.get_register();
+                  emit("\n\t" + reg_n3 + " = phi i1 [ 0, %" + andlbl1 + " ] , [ " + reg_n2 + ", %" + andlbl3 + " ]");
 
-                  // String n2 =n.f2.accept(this, argu);
-                  return null;
+                  symbol_table.insert(reg_n3, reg_n3, "i1");
+                  
+
+                  return reg_n3;
                }
   
    /**
