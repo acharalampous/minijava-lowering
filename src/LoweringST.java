@@ -16,7 +16,9 @@ public class LoweringST{
     private Map<String, ClassOffsets> classes; // maps class names with their offset info
 
     private Map<String, NameType> current_scope; // Holds all the declared variables with their register name + type, in current scope
- 
+    private Map<String, String> object_class; // Holds the type of each instance
+
+
     private int register_counter; // number of the next register
     private int arr_alloc_lbl; // number of the next label, for array size check, during new int[]
     private int oob_lbl; // number of the next label, for array bounds check, durign array lookup
@@ -130,6 +132,14 @@ public class LoweringST{
         this.current_scope.put(name, new NameType(reg_name, type));
     }
 
+    public void insert_object(String var, String type){
+        this.object_class.put(var, type);
+    }
+
+    public String get_object_type(String var){
+        return this.object_class.get(var);
+    }
+
     /* Get type of variable given in current scope */
     public String lookup(String var_name){
         NameType co = this.current_scope.get(var_name);
@@ -156,9 +166,14 @@ public class LoweringST{
         return this.classes.get(class_name).get_variables().get(variable_name).get_type();
 
     }
+
+    public int get_method_offset(String class_name, String method_name){
+        return this.classes.get(class_name).get_methods().get(method_name).get_offset();
+    }
     
     public void enter_scope(){
         this.current_scope = new HashMap<>();
+        this.object_class = new HashMap<>();
         this.register_counter = 0;
         this.arr_alloc_lbl = 0;
         this.oob_lbl = 0;

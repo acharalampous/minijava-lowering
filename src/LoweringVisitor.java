@@ -256,6 +256,8 @@ public class LoweringVisitor extends GJDepthFirst<String, String>{
       emit("\n");
 
       symbol_table.insert(id, "%" + id, llvm_type + "*");
+      if(llvm_type.equals("i8*"))
+         symbol_table.insert_object(id, type);
       return null;
    }
   
@@ -825,14 +827,44 @@ public class LoweringVisitor extends GJDepthFirst<String, String>{
                   * f5 -> ")"
                   */
                public String visit(MessageSend n, String argu) throws Exception {
-                  String _ret=null;
-                  n.f0.accept(this, argu);
-                  n.f1.accept(this, argu);
-                  n.f2.accept(this, argu);
-                  n.f3.accept(this, argu);
+                  /* Get variable, it's register and type */
+                  String id = n.f0.accept(this, null);
+                  String reg_n1 = load_variable(id, "i8**");
+
+                  String reg_n2 = symbol_table.get_register();
+                  emit("\n\t" + reg_n2 + " = bitcast i8* " + reg_n1 + " to i8***");
+
+                  String reg_n3 = symbol_table.get_register();
+                  emit("\n\t" + reg_n3 + " = load i8**, i8*** " + reg_n2);
+                  
+                  String type = symbol_table.get_object_type(id);
+                  
+                  String method_name = n.f2.accept(this, argu);
+                  String offset = Integer.toString(symbol_table.get_method_offset(type, method_name));
+                  
+                  String reg_n4 = symbol_table.get_register();
+                  emit("\n\t" + reg_n4 + " = getelementptr i8*, i8** " + reg_n3 + ", i32 " + offset);
+
+                  String reg_n5 = symbol_table.get_register();
+                  emit("\n\t" + reg_n5 + " = load i8*, i8** " + reg_n4);
+
+                  Vector<NameType> method_types = symbol_table.get_classes().get(type).get_methods().get(method_name).get_types();
+                  String ret_type = method_types.get(0).get_type();
+                  ret_type = symbol_table.get_llvm_type(ret_type);
+
+                  String reg_n6 = symbol_table.get_register();
+                  emit("\n\t" + reg_n6 + " = bitcast i8* " + reg_n5 + " to " + ret_type + " (i8*");
+
+                  for(int i = 1; i < method_types.size(); i++){
+                     String arg_type = symbol_table.get_llvm_type(method_types.elementAt(i).get_type());
+                     emit(", " + arg_type);
+                  }
+                  
+                  emit(")*");
+
                   n.f4.accept(this, argu);
-                  n.f5.accept(this, argu);
-                  return _ret;
+
+                  return null;
                }
             
                /**
@@ -858,10 +890,9 @@ public class LoweringVisitor extends GJDepthFirst<String, String>{
                   * f1 -> Expression()
                   */
                public String visit(ExpressionTerm n, String argu) throws Exception {
-                  String _ret=null;
                   n.f0.accept(this, argu);
                   n.f1.accept(this, argu);
-                  return _ret;
+                  return null;
                }
   
    /**
@@ -1000,6 +1031,7 @@ public class LoweringVisitor extends GJDepthFirst<String, String>{
 
       /* Insert register in symbol_table */
       symbol_table.insert(reg_n0, reg_n0, "i8*");
+      symbol_table.insert_object(reg_n0, class_name);
       return reg_n0;
    }
   
