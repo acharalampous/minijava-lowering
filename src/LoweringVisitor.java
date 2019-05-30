@@ -41,6 +41,43 @@ public class LoweringVisitor extends GJDepthFirst<String, String>{
       this.output_file.write(output);
    }
 
+   public String bool_to_int(String var) throws IOException{
+      String tmp_reg1;
+      String tmp_reg2;
+      String var_type;
+      if(isNumber(var)){ // literal, does not need a conversion
+         return null;
+      }
+      if(var.substring(0, 1).equals("%")){ // local register
+         tmp_reg1 = var;
+         var_type = symbol_table.lookup(var); // get type of var
+      }
+      else{ // identifier, must load its register
+         tmp_reg1 = symbol_table.get_var_reg(var); // get local register of identifier
+         
+         /* A CHECK MUST BE INSERTED HERE FOR OBJECT FIELDS */
+         
+         var_type = symbol_table.lookup(var); // get its type         
+      }
+
+
+      if(var_type.equals("i1*")){ // boolean, its value must be loaded
+         tmp_reg2 = symbol_table.get_register();
+         emit("\n\t" + tmp_reg2 + " = load i1, i1* " + tmp_reg1);
+      }
+      else if(var_type.equals("i1")){  // boolean, does not need a load 
+         tmp_reg2 = tmp_reg1;
+      }
+      else // not a boolean, does not need any conversion
+         return null;
+      
+
+      String reg = symbol_table.get_register();
+      emit("\n\t" + reg + " = zext i1 " + tmp_reg2 + " to i32");
+      
+      return reg;
+   }
+
 	/* Prepares a register for the var given. Var can be a local variable, class field or literal */
 	public String load_variable(String var, String type) throws IOException{
       String tmp_reg;
@@ -524,22 +561,23 @@ public class LoweringVisitor extends GJDepthFirst<String, String>{
       return null;
    }
   
-               /**
-                  * f0 -> "System.out.println"
-                  * f1 -> "("
-                  * f2 -> Expression()
-                  * f3 -> ")"
-                  * f4 -> ";"
-                  */
-               public String visit(PrintStatement n, String argu) throws Exception {
-                  String _ret=null;
-                  n.f0.accept(this, argu);
-                  n.f1.accept(this, argu);
-                  n.f2.accept(this, argu);
-                  n.f3.accept(this, argu);
-                  n.f4.accept(this, argu);
-                  return _ret;
-               }
+   /**
+      * f0 -> "System.out.println"
+      * f1 -> "("
+      * f2 -> Expression()
+      * f3 -> ")"
+      * f4 -> ";"
+      */
+   public String visit(PrintStatement n, String argu) throws Exception {
+      String val = n.f2.accept(this, null);
+      String int_val = bool_to_int(val); // convert to int and load its value if it a boolean 
+      if(int_val == null){ // if it was not a boolean, load it's value
+         int_val = load_variable(val, "i32*");
+      }
+
+      emit("\n\tcall void (i32) @print_int(i32 " + int_val +")");
+      return null;
+   }
             
                /**
                   * f0 -> AndExpression()
@@ -868,7 +906,7 @@ public class LoweringVisitor extends GJDepthFirst<String, String>{
    public String visit(ArrayAllocationExpression n, String argu) throws Exception {
       /* Get Expression (Register or Literal) */
       String reg = n.f3.accept(this, null);
-      String reg_n1 = load_variable(reg, "int");
+      String reg_n1 = load_variable(reg, "i32*");
       
       /* Bounds check */
       String reg_n2 = symbol_table.get_register();
