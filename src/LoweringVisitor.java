@@ -145,11 +145,13 @@ public class LoweringVisitor extends GJDepthFirst<String, String>{
          String arg_type = arg.get_type();
 
          String var_name = arg_name.substring(2); // discard "%."
-         emit("\n\t%" + var_name +" = alloca " + arg_type);
+         emit("\n\t%" + var_name + " = alloca " + arg_type);
          emit("\n\tstore " + arg_type + " " + arg_name + ", " + arg_type + "* %" + var_name);
          emit("\n");
 
          symbol_table.insert(var_name, "%" + var_name, arg_type + "*");
+         if(arg_type.equals("i8*"))
+            symbol_table.insert_object(var_name, cur_class);
       }
 
       method_args = null;
@@ -280,9 +282,9 @@ public class LoweringVisitor extends GJDepthFirst<String, String>{
    public String visit(MethodDeclaration n, String argu) throws Exception {
       String ret_type = n.f1.accept(this, argu);
       ret_type = symbol_table.get_llvm_type(ret_type);
-
+      
       String method_name = n.f2.accept(this, argu);
-
+      
       /* Print method's definition */
       emit("\n\ndefine " + ret_type + " @" + cur_class + "." + method_name + "(i8* %this");
       
@@ -291,6 +293,7 @@ public class LoweringVisitor extends GJDepthFirst<String, String>{
       n.f4.accept(this, argu);
       emit("){");
       symbol_table.enter_scope();
+      symbol_table.insert_object("%this", cur_class);
       load_method_arguments();
 
       /* Method Body */
@@ -850,8 +853,8 @@ public class LoweringVisitor extends GJDepthFirst<String, String>{
                   emit("\n\t" + reg_n5 + " = load i8*, i8** " + reg_n4);
 
                   Vector<NameType> method_types = symbol_table.get_classes().get(type).get_methods().get(method_name).get_types();
-                  String ret_type = method_types.get(0).get_type();
-                  ret_type = symbol_table.get_llvm_type(ret_type);
+                  String rtype = method_types.get(0).get_type();
+                  String ret_type = symbol_table.get_llvm_type(rtype);
 
                   String reg_n6 = symbol_table.get_register();
                   emit("\n\t" + reg_n6 + " = bitcast i8* " + reg_n5 + " to " + ret_type + " (i8*");
@@ -880,6 +883,12 @@ public class LoweringVisitor extends GJDepthFirst<String, String>{
                   }
 
                   emit(")");
+
+                  
+                  symbol_table.insert(reg_n7, reg_n7, ret_type);
+                  if(ret_type.equals("i8*")){
+                     symbol_table.insert_object(reg_n7, rtype);
+                  }
                   return reg_n7;
                }
             

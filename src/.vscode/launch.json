@@ -5,7 +5,7 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "args": "examples/lexample.java",
+            "args": "results/BinaryTree.java",
             "type": "java",
             "name": "Debug (Launch) - Current File",
             "request": "launch",

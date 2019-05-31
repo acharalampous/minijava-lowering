@@ -33,7 +33,7 @@ public class Main {
                 /* Parse file */
                 MiniJavaParser parser = new MiniJavaParser(input_file);
                 Goal root = parser.Goal();
-                System.err.println("  -> Program Parsed Successfully.");
+                System.out.println("  -> Program Parsed Successfully.");
  
                 SymbolTable symbol_table = new SymbolTable();
                 
@@ -63,7 +63,8 @@ public class Main {
                 LoweringVisitor lower_v = new LoweringVisitor(lst, output_file);
                 root.accept(lower_v, null);
 
-                System.err.println("  -> Program Lowering finished Succesfully.");
+                System.out.println("  -> Program Lowering finished Succesfully.");
+                System.out.println("\n");
             }
             catch(ParseException ex){
                 System.out.println("\n\t** " + ex.getMessage());
