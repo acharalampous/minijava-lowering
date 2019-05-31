@@ -52,9 +52,6 @@ public class Main {
                 root.accept(check_v, null);
                 System.out.println("  -> Program Symanticly Checked Succesfully.");
                 
-                /* Print offsets */
-                // symbol_table.print_offsets();
-                
                 /* Perform Lowering */
                 LoweringST lst = new LoweringST();
                 lst.fill_ST(symbol_table);
@@ -64,7 +61,7 @@ public class Main {
                 root.accept(lower_v, null);
 
                 System.out.println("  -> Program Lowering finished Succesfully.");
-                System.out.println("\n");
+                
             }
             catch(ParseException ex){
                 System.out.println("\n\t** " + ex.getMessage());
@@ -87,6 +84,7 @@ public class Main {
                 }
             }
         }
+        System.out.println("\n");
     }
 
 
@@ -111,7 +109,7 @@ public class Main {
         System.out.println("\n");
     }
 
-    /* Given a .java file, checks if valid and returns its equevalent .ll file_name */
+    /* Given a .java file, checks if valid and returns its equivalent .ll file_name */
     public static String get_output_filename(String file_name) throws Exception{
         int file_name_len = file_name.length();
         if(file_name_len < 6 || !(file_name.substring(file_name_len - 5).equals(".java")))

@@ -17,23 +17,26 @@ public class ClassOffsets{
 
     /* Constructor */
     public ClassOffsets(){
-        this.size = 8;
+        this.size = 8; // reserve space for vtable ptr
         this.vtable_size = 0;
         this.variables = new LinkedHashMap<>();
         this.methods = new LinkedHashMap<>();
     }
 
+    /* Given a class name and its content, compute and copy offsets */
     public void fill_offsets(String class_name, ClassContent cc){
         /* Get all variables of class */
         Vector<NameOffset> v_offsets = cc.get_v_offsets();
         Map<String, String> variables = cc.get_variables();
-        for(NameOffset var : v_offsets){
+        for(NameOffset var : v_offsets){ // add each variable
+            /* Get variable name and type and calculate its offset in class */
             String v_name = var.get_name();
             String v_type = variables.get(v_name);
             int v_offset = var.get_offset() + 8;
 
             this.variables.put(v_name, new VariableInfo(v_type, v_offset));
 
+            /* Increase class' size */
             int v_size = 0;
             if(v_type.equals("boolean")) v_size = 1;
             else if(v_type.equals("int")) v_size = 4;
@@ -42,25 +45,30 @@ public class ClassOffsets{
             increase_size(v_size);
         }
 
+        /* Get all methods of class */
         Vector<NameOffset> m_offsets = cc.get_m_offsets();
         Map<String, Vector<NameType>> methods = cc.get_methods();
-        for(NameOffset meth : m_offsets){
+        for(NameOffset meth : m_offsets){ // add each method
+            /* If it already exists, "overide it" */
             String m_name = meth.get_name();
             if(this.methods.containsKey(m_name)){
                 this.methods.get(m_name).set_class_name(class_name);
             }
-            else{
+            else{ // if not, add it and its argument type
                 Vector<NameType> m_args = methods.get(m_name);
                 int m_offset = this.vtable_size;
     
                 this.methods.put(m_name, new MethodInfo(class_name, m_args, m_offset));
-
+                
+                /* Increase vtable size */
                 increase_vt_size(1);
             }
         }
 
+        /* Get all methods which are overidding super's methods(not in m_offsets set) */
         for(Map.Entry<String, Vector<NameType>> entry : cc.get_methods().entrySet()){
             String m_name = entry.getKey();
+            /* If it exists in methods, update its owner (class name) */
             if(this.methods.containsKey(m_name)){
                 this.methods.get(m_name).set_class_name(class_name);
             }
@@ -81,6 +89,7 @@ public class ClassOffsets{
     public void set_vt_size(int vt_size){ this.vtable_size = vt_size; }
     public void increase_vt_size(int vt_size){ this.vtable_size += vt_size; }
 
+    /* Print everything in class */
     public void print_all(){
         System.out.println("\tSize: " + this.size);
         System.out.println("\tVTable Size: " + this.vtable_size);        

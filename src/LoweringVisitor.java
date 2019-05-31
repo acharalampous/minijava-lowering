@@ -26,25 +26,27 @@ public class LoweringVisitor extends GJDepthFirst<String, String>{
    private Vector<NameType> method_args;
    private Vector<String> meth_args;
 
-   /* Given a string returns true if it is a number, else false */
-   public boolean isNumber(String str) { 
-      try {  
-         Double.parseDouble(str);  
-         return true;
-      } catch(NumberFormatException e){  
-         return false;  
-      }  
-   }
-
+   /* Constructor */
    public LoweringVisitor(LoweringST st, BufferedWriter output_file){
       this.symbol_table = st;
       this.output_file = output_file;
    }
 
-   public void emit(String output) throws IOException{
-      this.output_file.write(output);
+   /* Writes string to output_file */
+   public void emit(String output) throws IOException{ this.output_file.write(output); }
+
+   /* Given a string returns true if it is a number, else false */
+   public boolean isNumber(String str) { 
+      try {  
+         Double.parseDouble(str);  
+         return true;
+      } 
+      catch(NumberFormatException e){  
+         return false;  
+      }  
    }
 
+   /* Converts given var to int, if it of boolean type */
    public String bool_to_int(String var) throws IOException{
       String tmp_reg1;
       String tmp_reg2;
@@ -66,7 +68,6 @@ public class LoweringVisitor extends GJDepthFirst<String, String>{
 				var_type = symbol_table.lookup(var); // get its type 
          
       }
-
 
       if(var_type.equals("i1*")){ // boolean, its value must be loaded
          tmp_reg2 = symbol_table.get_register();
@@ -138,8 +139,9 @@ public class LoweringVisitor extends GJDepthFirst<String, String>{
       return tmp_reg;
    }
    
-
+   /* Loads all method arguments in registers */
    public void load_method_arguments() throws IOException{
+      /* Load each argument */
       for(NameType arg : method_args){
          String arg_name = arg.get_name();
          String arg_type = arg.get_type();
@@ -149,8 +151,9 @@ public class LoweringVisitor extends GJDepthFirst<String, String>{
          emit("\n\tstore " + arg_type + " " + arg_name + ", " + arg_type + "* %" + var_name);
          emit("\n");
 
+         /* Add arguments to symbol table */
          symbol_table.insert(var_name, "%" + var_name, arg_type + "*");
-         if(arg_type.equals("i8*"))
+         if(arg_type.equals("i8*")) // keep argument's class name
             symbol_table.insert_object(var_name, cur_class);
       }
 
@@ -158,6 +161,8 @@ public class LoweringVisitor extends GJDepthFirst<String, String>{
    }
 	
 
+
+   
 	/**
     * f0 -> MainClass()
     * f1 -> ( TypeDeclaration() )*
