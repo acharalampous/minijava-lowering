@@ -18,6 +18,7 @@ public class LoweringST{
     private Map<String, NameType> current_scope; // Holds all the declared variables with their register name + type, in current scope
     private Map<String, String> object_class; // Maps each instance variable to its type
 
+    /* Labels */
     private int register_counter; // number of the next register
     private int arr_alloc_lbl; // number of the next label, for array size check, during new int[]
     private int oob_lbl; // number of the next label, for array bounds check, durign array lookup
@@ -25,12 +26,22 @@ public class LoweringST{
     private int if_lbl; // number for the next if label
     private int loop_lbl; // number for the next loop label
     
+    private Vector<NameType> method_decl_args; // Maps all method's argument with their type during method declaration
+
+    /* Vector that keeps vectors of arguments, for each level of inner method calls(method call as argument to another call) */
+    private Vector<Vector<String>> method_call_args; 
+
+    /* Vector that keeps registers and their type, containing the value of arguments of each inner method call */    
+    private Vector<Vector<NameType>> method_call_regs;
 
 
     /* Constructor */
     public LoweringST(){
         this.classes = new LinkedHashMap<>();
         this.current_scope = null;
+        this.method_call_args = new Vector<>();
+        this.method_call_regs = new Vector<>();
+
     }
 
     /* Given a symbol table after semantic check, collect all offsets and fill st */
@@ -189,6 +200,7 @@ public class LoweringST{
     /* Get given class' method offset */
     public int get_method_offset(String class_name, String method_name){ return this.classes.get(class_name).get_methods().get(method_name).get_offset(); }
     
+
     ////////////
     /* LABELS */
     ////////////
@@ -235,5 +247,78 @@ public class LoweringST{
             System.out.println("\n\n" + entry.getKey());
             entry.getValue().print_all();
         }
+    }
+
+
+    /////////////////////////////
+    /* Method Declaration Args */
+    /////////////////////////////
+
+    public Vector<NameType> get_mdecl_args(){ return this.method_decl_args; }
+    
+    /* Initializes method_decl_args for a new method */
+    public void mdecl_args_init(){ method_decl_args = new Vector<>(); }
+    
+    /* Adds new argument to current method's arguments */
+    public void mdecl_args_add(String name, String type ){ method_decl_args.add(new NameType(name, type)); }
+
+    /* Destroys method_decl args vector */
+    public void mdecl_args_destroy(){ method_decl_args = null; }
+
+
+
+    //////////////////////
+    /* Method Call Args */
+    //////////////////////
+
+    /* Adds a new level, for inner method call */
+    public void mcall_new_method(){ method_call_args.add(new Vector<>()); }
+
+    /* Adds a new argument in the innermost method call */
+    public void mcall_ins_arg(String par){
+        int v_size = method_call_args.size();
+        if(v_size != 0){
+            (method_call_args.get(v_size - 1)).add(par);
+        }
+        else
+            System.out.println("GRANDEEE ERRRRORR IN MCALL_INS");    
+    }
+
+    /* Pops the arguments of the innermost method call */
+    public Vector<String> mcall_pop_last(){ 
+        int v_size = method_call_args.size();
+        if(v_size != 0)
+            return method_call_args.remove(v_size - 1);
+        else
+            System.out.println("GRANDEEE ERRRRORR IN MCALL_POP");
+        return null;
+    }
+
+
+    //////////////////////
+    /* Method Call Regs */
+    //////////////////////
+
+    /* Adds a new level, for inner method call registers */
+    public void mregs_new_method(){ method_call_regs.add(new Vector<>()); }
+
+    /* Adds a new register in the innermost method call */
+    public void mregs_ins_arg(String reg_name, String type){
+        int v_size = method_call_regs.size();
+        if(v_size != 0){
+            (method_call_regs.get(v_size - 1)).add(new NameType(reg_name, type));
+        }
+        else
+            System.out.println("GRANDEEE ERRRRORR IN MREGS_INS");    
+    }
+
+    /* Pops the arguments of the innermost method call */
+    public Vector<NameType> mregs_pop_last(){ 
+        int v_size = method_call_regs.size();
+        if(v_size != 0)
+            return method_call_regs.remove(v_size - 1);
+        else
+            System.out.println("GRANDEEE ERRRRORR IN MREGS_POP");
+        return null;
     }
 }

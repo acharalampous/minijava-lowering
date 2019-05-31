@@ -23,8 +23,8 @@ public class LoweringVisitor extends GJDepthFirst<String, String>{
    private BufferedWriter output_file;
    private String cur_class;
 
-   private Vector<NameType> method_args;
-   private Vector<String> meth_args;
+   private Vector<String> curr_method_call; // keeps the arg types of innermost method call
+   private Vector<NameType> curr_method_regs; // keeps the registers of innermost method call arguments
 
    /* Constructor */
    public LoweringVisitor(LoweringST st, BufferedWriter output_file){
@@ -127,7 +127,7 @@ public class LoweringVisitor extends GJDepthFirst<String, String>{
       var_type = symbol_table.get_llvm_type(var_type);
       String tmp_reg1 = symbol_table.get_register();
 
-      emit("\n\t" + tmp_reg1 + " = getelementptr i8, i8* %this, " + var_type + " " + var_offset);
+      emit("\n\t" + tmp_reg1 + " = getelementptr i8, i8* %this, i32 " + var_offset);
 
       String tmp_reg = symbol_table.get_register();
       emit("\n\t" + tmp_reg + " = bitcast i8* " + tmp_reg1 + " to " + var_type + "*");
@@ -141,23 +141,26 @@ public class LoweringVisitor extends GJDepthFirst<String, String>{
    
    /* Loads all method arguments in registers */
    public void load_method_arguments() throws IOException{
+      Vector<NameType> method_args = symbol_table.get_mdecl_args();
+
       /* Load each argument */
       for(NameType arg : method_args){
          String arg_name = arg.get_name();
          String arg_type = arg.get_type();
+         String arg_ltype = symbol_table.get_llvm_type(arg_type);
 
          String var_name = arg_name.substring(2); // discard "%."
-         emit("\n\t%" + var_name + " = alloca " + arg_type);
-         emit("\n\tstore " + arg_type + " " + arg_name + ", " + arg_type + "* %" + var_name);
+         emit("\n\t%" + var_name + " = alloca " + arg_ltype);
+         emit("\n\tstore " + arg_ltype + " " + arg_name + ", " + arg_ltype + "* %" + var_name);
          emit("\n");
 
          /* Add arguments to symbol table */
-         symbol_table.insert(var_name, "%" + var_name, arg_type + "*");
-         if(arg_type.equals("i8*")) // keep argument's class name
-            symbol_table.insert_object(var_name, cur_class);
+         symbol_table.insert(var_name, "%" + var_name, arg_ltype + "*");
+         if(arg_ltype.equals("i8*")) // keep argument's class name
+            symbol_table.insert_object(var_name, arg_type);
       }
 
-      method_args = null;
+      symbol_table.mdecl_args_destroy();
    }
 	
 
@@ -294,7 +297,7 @@ public class LoweringVisitor extends GJDepthFirst<String, String>{
       emit("\n\ndefine " + ret_type + " @" + cur_class + "." + method_name + "(i8* %this");
       
       /* Print method's arguments */
-      method_args = new Vector<>();
+      symbol_table.mdecl_args_init();
       n.f4.accept(this, argu);
       emit("){");
       symbol_table.enter_scope();
@@ -333,14 +336,15 @@ public class LoweringVisitor extends GJDepthFirst<String, String>{
    public String visit(FormalParameter n, String argu) throws Exception {
       /* Get type of argument */
       String type = n.f0.accept(this, argu);
-      type = symbol_table.get_llvm_type(type);
+      String llvm_type = symbol_table.get_llvm_type(type);
 
       /* Get name of argument */
       String arg_name = n.f1.accept(this, argu);
 
-      method_args.add(new NameType("%." + arg_name , type));
+      /* Keep argument */
+      symbol_table.mdecl_args_add("%." + arg_name, type);
 
-      emit(", " + type + " %." + arg_name);
+      emit(", " + llvm_type + " %." + arg_name);
       return null;
    }
 
@@ -848,6 +852,8 @@ public class LoweringVisitor extends GJDepthFirst<String, String>{
                   
                   String type = symbol_table.get_object_type(id);
                   
+
+                  /* Get method name, its offset and load it from vtable */
                   String method_name = n.f2.accept(this, argu);
                   String offset = Integer.toString(symbol_table.get_method_offset(type, method_name));
                   
@@ -857,6 +863,8 @@ public class LoweringVisitor extends GJDepthFirst<String, String>{
                   String reg_n5 = symbol_table.get_register();
                   emit("\n\t" + reg_n5 + " = load i8*, i8** " + reg_n4);
 
+
+                  /* Get method's return and arg type to bitcast pointer */
                   Vector<NameType> method_types = symbol_table.get_classes().get(type).get_methods().get(method_name).get_types();
                   String rtype = method_types.get(0).get_type();
                   String ret_type = symbol_table.get_llvm_type(rtype);
@@ -864,21 +872,27 @@ public class LoweringVisitor extends GJDepthFirst<String, String>{
                   String reg_n6 = symbol_table.get_register();
                   emit("\n\t" + reg_n6 + " = bitcast i8* " + reg_n5 + " to " + ret_type + " (i8*");
 
-                  meth_args = new Vector<>();
+                  /* Print all argument types */
+                  symbol_table.mcall_new_method();
                   for(int i = 1; i < method_types.size(); i++){
                      String arg_type = symbol_table.get_llvm_type(method_types.elementAt(i).get_type());
                      emit(", " + arg_type);
 
-                     meth_args.add(arg_type);
+                     symbol_table.mcall_ins_arg(arg_type);
                   }
                   
                   emit(")*");
 
-                  method_args = new Vector<>();
+                  /* Load all arguments and place them to registers to call method */
+                  symbol_table.mregs_new_method();
+                  curr_method_call = symbol_table.mcall_pop_last();
                   n.f4.accept(this, argu);
 
+                  /* Call method with arguments given */
                   String reg_n7 = symbol_table.get_register();
                   emit("\n\t" + reg_n7 + " = call " + ret_type + " " + reg_n6 + "(i8* " + reg_n1);
+                  
+                  Vector<NameType> method_args = symbol_table.mregs_pop_last();
                   for(int i = 0; i < method_args.size(); i++){
                      NameType argument = method_args.elementAt(i);
                      String arg_reg = argument.get_name();
@@ -890,8 +904,9 @@ public class LoweringVisitor extends GJDepthFirst<String, String>{
                   emit(")");
 
                   
+                  /* Insert method's return value to register */
                   symbol_table.insert(reg_n7, reg_n7, ret_type);
-                  if(ret_type.equals("i8*")){
+                  if(ret_type.equals("i8*")){ // if returning reference to object, keep it
                      symbol_table.insert_object(reg_n7, rtype);
                   }
                   return reg_n7;
@@ -903,10 +918,10 @@ public class LoweringVisitor extends GJDepthFirst<String, String>{
                   */
                public String visit(ExpressionList n, String argu) throws Exception {
                   String arg = n.f0.accept(this, argu);
-                  String type = meth_args.remove(0);
+                  String type = curr_method_call.remove(0);
                   String arg_reg = load_variable(arg, type + "*");
 
-                  method_args.add(new NameType(arg_reg, type));
+                  symbol_table.mregs_ins_arg(arg_reg, type);
 
                   n.f1.accept(this, argu);
                   
@@ -926,10 +941,10 @@ public class LoweringVisitor extends GJDepthFirst<String, String>{
                   */
                public String visit(ExpressionTerm n, String argu) throws Exception {                  
                   String arg = n.f1.accept(this, argu);
-                  String type = meth_args.remove(0);
+                  String type = curr_method_call.remove(0);
                   String arg_reg = load_variable(arg, type + "*");
 
-                  method_args.add(new NameType(arg_reg, type));
+                  symbol_table.mregs_ins_arg(arg_reg, type);
 
                   return null;
                }
@@ -1085,7 +1100,7 @@ public class LoweringVisitor extends GJDepthFirst<String, String>{
 
       /* Perform not expression on value */
       String reg_n1 = symbol_table.get_register();
-      emit("\n\t" + reg_n1 + " = xor i1" + var + ", 1");
+      emit("\n\t" + reg_n1 + " = xor i1 " + var + ", 1");
 
       symbol_table.insert(reg_n1, reg_n1, "i1");
 

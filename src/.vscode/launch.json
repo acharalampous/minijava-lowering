@@ -5,7 +5,7 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "args": "results/BinaryTree.java",
+            "args": "results/LinkedList.java",
             "type": "java",
             "name": "Debug (Launch) - Current File",
             "request": "launch",
