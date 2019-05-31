@@ -23,9 +23,6 @@ public class LoweringVisitor extends GJDepthFirst<String, String>{
    private BufferedWriter output_file;
    private String cur_class;
 
-   private Vector<String> curr_method_call; // keeps the arg types of innermost method call
-   private Vector<NameType> curr_method_regs; // keeps the registers of innermost method call arguments
-
    /* Constructor */
    public LoweringVisitor(LoweringST st, BufferedWriter output_file){
       this.symbol_table = st;
@@ -124,18 +121,19 @@ public class LoweringVisitor extends GJDepthFirst<String, String>{
       /* Get offset and type */
       int var_offset = symbol_table.get_var_offset(cur_class, var);
       String var_type = symbol_table.get_var_type(cur_class, var);
-      var_type = symbol_table.get_llvm_type(var_type);
+      String var_ltype = symbol_table.get_llvm_type(var_type);
       String tmp_reg1 = symbol_table.get_register();
 
       emit("\n\t" + tmp_reg1 + " = getelementptr i8, i8* %this, i32 " + var_offset);
 
       String tmp_reg = symbol_table.get_register();
-      emit("\n\t" + tmp_reg + " = bitcast i8* " + tmp_reg1 + " to " + var_type + "*");
+      emit("\n\t" + tmp_reg + " = bitcast i8* " + tmp_reg1 + " to " + var_ltype + "*");
 
-      var_type = var_type + "*";
+      var_ltype = var_ltype + "*";
 
-      symbol_table.insert(tmp_reg, tmp_reg, var_type);
-
+      symbol_table.insert(tmp_reg, tmp_reg, var_ltype);
+      if(var_ltype.equals("i8**")) // keep argument's class name
+         symbol_table.insert_object(var, var_type);
       return tmp_reg;
    }
    
@@ -831,123 +829,123 @@ public class LoweringVisitor extends GJDepthFirst<String, String>{
       return reg_n3;
    }
 
-               /**
-                  * f0 -> PrimaryExpression()
-                  * f1 -> "."
-                  * f2 -> Identifier()
-                  * f3 -> "("
-                  * f4 -> ( ExpressionList() )?
-                  * f5 -> ")"
-                  */
-               public String visit(MessageSend n, String argu) throws Exception {
-                  /* Get variable, its register and type */
-                  String id = n.f0.accept(this, null);
-                  String reg_n1 = load_variable(id, "i8**");
+   /**
+    * f0 -> PrimaryExpression()
+    * f1 -> "."
+    * f2 -> Identifier()
+    * f3 -> "("
+    * f4 -> ( ExpressionList() )?
+    * f5 -> ")"
+    */
+   public String visit(MessageSend n, String argu) throws Exception {
+      /* Get variable, its register and type */
+      String id = n.f0.accept(this, null);
+      String reg_n1 = load_variable(id, "i8**");
 
-                  String reg_n2 = symbol_table.get_register();
-                  emit("\n\t" + reg_n2 + " = bitcast i8* " + reg_n1 + " to i8***");
+      String reg_n2 = symbol_table.get_register();
+      emit("\n\t" + reg_n2 + " = bitcast i8* " + reg_n1 + " to i8***");
 
-                  String reg_n3 = symbol_table.get_register();
-                  emit("\n\t" + reg_n3 + " = load i8**, i8*** " + reg_n2);
-                  
-                  String type = symbol_table.get_object_type(id);
-                  
+      String reg_n3 = symbol_table.get_register();
+      emit("\n\t" + reg_n3 + " = load i8**, i8*** " + reg_n2);
+      
+      String type = symbol_table.get_object_type(id);
+      
 
-                  /* Get method name, its offset and load it from vtable */
-                  String method_name = n.f2.accept(this, argu);
-                  String offset = Integer.toString(symbol_table.get_method_offset(type, method_name));
-                  
-                  String reg_n4 = symbol_table.get_register();
-                  emit("\n\t" + reg_n4 + " = getelementptr i8*, i8** " + reg_n3 + ", i32 " + offset);
+      /* Get method name, its offset and load it from vtable */
+      String method_name = n.f2.accept(this, argu);
+      String offset = Integer.toString(symbol_table.get_method_offset(type, method_name));
+      
+      String reg_n4 = symbol_table.get_register();
+      emit("\n\t" + reg_n4 + " = getelementptr i8*, i8** " + reg_n3 + ", i32 " + offset);
 
-                  String reg_n5 = symbol_table.get_register();
-                  emit("\n\t" + reg_n5 + " = load i8*, i8** " + reg_n4);
+      String reg_n5 = symbol_table.get_register();
+      emit("\n\t" + reg_n5 + " = load i8*, i8** " + reg_n4);
 
 
-                  /* Get method's return and arg type to bitcast pointer */
-                  Vector<NameType> method_types = symbol_table.get_classes().get(type).get_methods().get(method_name).get_types();
-                  String rtype = method_types.get(0).get_type();
-                  String ret_type = symbol_table.get_llvm_type(rtype);
+      /* Get method's return and arg type to bitcast pointer */
+      Vector<NameType> method_types = symbol_table.get_classes().get(type).get_methods().get(method_name).get_types();
+      String rtype = method_types.get(0).get_type();
+      String ret_type = symbol_table.get_llvm_type(rtype);
 
-                  String reg_n6 = symbol_table.get_register();
-                  emit("\n\t" + reg_n6 + " = bitcast i8* " + reg_n5 + " to " + ret_type + " (i8*");
+      String reg_n6 = symbol_table.get_register();
+      emit("\n\t" + reg_n6 + " = bitcast i8* " + reg_n5 + " to " + ret_type + " (i8*");
 
-                  /* Print all argument types */
-                  symbol_table.mcall_new_method();
-                  for(int i = 1; i < method_types.size(); i++){
-                     String arg_type = symbol_table.get_llvm_type(method_types.elementAt(i).get_type());
-                     emit(", " + arg_type);
+      /* Print all argument types */
+      symbol_table.mcall_new_method();
+      for(int i = 1; i < method_types.size(); i++){
+         String arg_type = symbol_table.get_llvm_type(method_types.elementAt(i).get_type());
+         emit(", " + arg_type);
 
-                     symbol_table.mcall_ins_arg(arg_type);
-                  }
-                  
-                  emit(")*");
+         symbol_table.mcall_ins_arg(arg_type);
+      }
+      
+      emit(")*");
 
-                  /* Load all arguments and place them to registers to call method */
-                  symbol_table.mregs_new_method();
-                  curr_method_call = symbol_table.mcall_pop_last();
-                  n.f4.accept(this, argu);
+      /* Load all arguments and place them to registers to call method */
+      symbol_table.mregs_new_method();
+      n.f4.accept(this, argu);
+      symbol_table.mcall_pop_last();
 
-                  /* Call method with arguments given */
-                  String reg_n7 = symbol_table.get_register();
-                  emit("\n\t" + reg_n7 + " = call " + ret_type + " " + reg_n6 + "(i8* " + reg_n1);
-                  
-                  Vector<NameType> method_args = symbol_table.mregs_pop_last();
-                  for(int i = 0; i < method_args.size(); i++){
-                     NameType argument = method_args.elementAt(i);
-                     String arg_reg = argument.get_name();
-                     String arg_type = argument.get_type();
+      /* Call method with arguments given */
+      String reg_n7 = symbol_table.get_register();
+      emit("\n\t" + reg_n7 + " = call " + ret_type + " " + reg_n6 + "(i8* " + reg_n1);
+      
+      Vector<NameType> method_args = symbol_table.mregs_pop_last();
+      for(int i = 0; i < method_args.size(); i++){
+         NameType argument = method_args.elementAt(i);
+         String arg_reg = argument.get_name();
+         String arg_type = argument.get_type();
 
-                     emit(", " + arg_type + " " + arg_reg);
-                  }
+         emit(", " + arg_type + " " + arg_reg);
+      }
 
-                  emit(")");
+      emit(")");
 
-                  
-                  /* Insert method's return value to register */
-                  symbol_table.insert(reg_n7, reg_n7, ret_type);
-                  if(ret_type.equals("i8*")){ // if returning reference to object, keep it
-                     symbol_table.insert_object(reg_n7, rtype);
-                  }
-                  return reg_n7;
-               }
-            
-               /**
-                  * f0 -> Expression()
-                  * f1 -> ExpressionTail()
-                  */
-               public String visit(ExpressionList n, String argu) throws Exception {
-                  String arg = n.f0.accept(this, argu);
-                  String type = curr_method_call.remove(0);
-                  String arg_reg = load_variable(arg, type + "*");
+      
+      /* Insert method's return value to register */
+      symbol_table.insert(reg_n7, reg_n7, ret_type);
+      if(ret_type.equals("i8*")){ // if returning reference to object, keep it
+         symbol_table.insert_object(reg_n7, rtype);
+      }
+      return reg_n7;
+   }
 
-                  symbol_table.mregs_ins_arg(arg_reg, type);
+   /**
+    * f0 -> Expression()
+    * f1 -> ExpressionTail()
+    */
+   public String visit(ExpressionList n, String argu) throws Exception {
+      String arg = n.f0.accept(this, argu);
+      String type = symbol_table.mcall_pop_next_arg();
+      String arg_reg = load_variable(arg, type + "*");
 
-                  n.f1.accept(this, argu);
-                  
-                  return null;
-               }
-            
-               /**
-                  * f0 -> ( ExpressionTerm() )*
-                  */
-               public String visit(ExpressionTail n, String argu) throws Exception {
-                  return n.f0.accept(this, argu);
-               }
-            
-               /**
-                  * f0 -> ","
-                  * f1 -> Expression()
-                  */
-               public String visit(ExpressionTerm n, String argu) throws Exception {                  
-                  String arg = n.f1.accept(this, argu);
-                  String type = curr_method_call.remove(0);
-                  String arg_reg = load_variable(arg, type + "*");
+      symbol_table.mregs_ins_arg(arg_reg, type);
 
-                  symbol_table.mregs_ins_arg(arg_reg, type);
+      n.f1.accept(this, argu);
+      
+      return null;
+   }
 
-                  return null;
-               }
+   /**
+    * f0 -> ( ExpressionTerm() )*
+    */
+   public String visit(ExpressionTail n, String argu) throws Exception {
+      return n.f0.accept(this, argu);
+   }
+
+   /**
+    * f0 -> ","
+    * f1 -> Expression()
+    */
+   public String visit(ExpressionTerm n, String argu) throws Exception {                  
+      String arg = n.f1.accept(this, argu);
+      String type = symbol_table.mcall_pop_next_arg();
+      String arg_reg = load_variable(arg, type + "*");
+
+      symbol_table.mregs_ins_arg(arg_reg, type);
+
+      return null;
+   }
   
    /**
     * f0 -> NotExpression()

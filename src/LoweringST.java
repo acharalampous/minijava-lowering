@@ -294,6 +294,18 @@ public class LoweringST{
         return null;
     }
 
+    /* Pops the next argument of the innermost method call */
+    public String mcall_pop_next_arg(){ 
+        int v_size = method_call_args.size();
+        if(v_size != 0){
+            Vector<String> next_method = method_call_args.elementAt(v_size - 1);
+            return next_method.remove(0);
+        }
+        else
+            System.out.println("GRANDEEE ERRRRORR IN MCALL_POP");
+        return null;
+    }
+
 
     //////////////////////
     /* Method Call Regs */
@@ -321,4 +333,5 @@ public class LoweringST{
             System.out.println("GRANDEEE ERRRRORR IN MREGS_POP");
         return null;
     }
+
 }

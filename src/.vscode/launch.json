@@ -5,7 +5,7 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "args": "results/LinkedList.java",
+            "args": "results/TreeVisitor.java",
             "type": "java",
             "name": "Debug (Launch) - Current File",
             "request": "launch",
