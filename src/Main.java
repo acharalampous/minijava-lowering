@@ -19,13 +19,12 @@ public class Main {
         }
         System.out.println("Valid execution. Performing Semantic Analysis on files given.");
         
-        /* Perform Semantic Check on all files provided */
+        /* Perform Semantic Check and Lowering on all files provided */
         for(int i = 0; i < args.length; i++){
             FileInputStream input_file = null;
             BufferedWriter  output_file = null;
 
-            try{
-                
+            try{       
                 print_label(args[i]);
 
                 input_file = new FileInputStream(args[i]);
@@ -56,6 +55,7 @@ public class Main {
                 LoweringST lst = new LoweringST();
                 lst.fill_ST(symbol_table);
                 
+                /* Create and open output file and start lowering through lowering_visitor */ 
                 output_file = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(get_output_filename(args[i])), "utf-8"));
                 LoweringVisitor lower_v = new LoweringVisitor(lst, output_file);
                 root.accept(lower_v, null);
@@ -80,7 +80,7 @@ public class Main {
                         output_file.close();
                     }
                     catch(IOException ex){
-                    System.err.println("\n\t** " + ex.getMessage());
+                        System.err.println("\n\t** " + ex.getMessage());
                 }
             }
         }

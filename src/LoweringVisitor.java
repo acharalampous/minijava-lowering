@@ -23,6 +23,8 @@ public class LoweringVisitor extends GJDepthFirst<String, String>{
    private BufferedWriter output_file;
    private String cur_class;
 
+
+   
    /* Constructor */
    public LoweringVisitor(LoweringST st, BufferedWriter output_file){
       this.symbol_table = st;
