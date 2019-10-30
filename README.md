@@ -1,6 +1,6 @@
 # MiniJava Lowering to LLVM IR
 <p align="center">
-  <img width = 400 height = 196 src="img.png">
+  <img width = 600 height = 294 src="img.png">
 </p>
 <br />Part of MiniJava Compiler performing Lowering generating LLVM Intermediate Representation. After semantically checked, the code in Minijava is lowered to LLVM Intermediate Represenation using a visitor pattern. LLVM Language Reference Manual can be found here: https://llvm.org/docs/LangRef.html#instruction-reference. The V-Table of classes is created based on the offsets generated from the program here: www.github.com/AndCharalampous/minijava-semantic-check.
 
@@ -23,7 +23,7 @@ You can install the latest JDK and JRE version on Ubuntu based systems using:
 <br />``` $ sudo apt install default-jre ```
 <br />``` $ sudo apt install default-jdk ```
 <br />Also Clang v4 or older is needed in order to run the output of the lowering process. You can install using:
-<br /```  $ sudo apt install clang-4.0```
+<br />```  $ sudo apt install clang-4.0```
 
 
 ## Getting Started
@@ -41,11 +41,11 @@ Execute using:
 <br /> ```java Main [javaf1 javaf2 .. javafN]```
 * Main: MiniJava Lowering Compiler Main file
 * javaf#: MiniJava File that will be semantically checked
-_At least one MiniJava file must be provided._
+<br />_At least one MiniJava file must be provided._
 
 ### Output
-After completion, for every valid input a corresponding .ll file will be created.
-<br />You can then compile that .ll file, producing an executable. For example, if file1.java was given for execution, a file1.ll file will be created. It can then be compiled with clang and executed.
+After completion, for every valid input, a corresponding .ll file will be created.
+<br />You can then compile that .ll file, producing an executable. For example, if file1.java was given for execution, a file1.ll file would be created. It can then be compiled with clang and executed.
 <br /> ```$ clang-4.0 -o file1.x file1.ll```
 <br /> ```$ ./file1.x```
 
