@@ -1,6 +1,6 @@
 # MiniJava Lowering to LLVM IR
 <p align="center">
-  <img width = 400 height = 160 src="img.png">
+  <img width = 400 height = 196 src="img.png">
 </p>
 <br />Part of MiniJava Compiler performing Lowering generating LLVM Intermediate Representation. After semantically checked, the code in Minijava is lowered to LLVM Intermediate Represenation using a visitor pattern. LLVM Language Reference Manual can be found here: https://llvm.org/docs/LangRef.html#instruction-reference. The V-Table of classes is created based on the offsets generated from the program here: www.github.com/AndCharalampous/minijava-semantic-check.
 
